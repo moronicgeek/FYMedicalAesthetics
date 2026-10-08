@@ -1,0 +1,194 @@
+// Patient-identifying and health fields are never stored in plain text.
+// They live in AES-256-GCM encrypted columns (see src/lib/crypto.ts).
+// Lookup columns (*Hash) hold keyed HMACs so we can find a patient by
+// email, phone or ID number without decrypting every record.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  DOCTOR
+  PRACTITIONER
+  RECEPTION
+}
+
+enum CaseType {
+  IV_DRIP
+  AESTHETICS
+  LASER
+}
+
+// IV drip: CONSENTED -> (vitals) -> AWAITING_DOCTOR -> IN_PROGRESS -> READY_TO_CLOSE -> CLOSED
+//          vitals out of range: CONSENTED -> REFERRED -> CLOSED
+//          doctor says no:      AWAITING_DOCTOR -> DECLINED -> CLOSED
+// Other treatments: CONSENTED -> CLOSED
+enum CaseStatus {
+  CONSENTED
+  AWAITING_DOCTOR
+  IN_PROGRESS
+  READY_TO_CLOSE
+  REFERRED
+  DECLINED
+  CLOSED
+}
+
+enum CaseOutcome {
+  COMPLETED
+  REFERRED_VITALS
+  DOCTOR_DECLINED
+}
+
+enum AppointmentStatus {
+  BOOKED
+  CHECKED_IN
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model User {
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  phone        String?
+  passwordHash String
+  role         Role
+  active       Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  sessions     Session[]
+  appointments Appointment[] @relation("DoctorAppointments")
+  auditLogs    AuditLog[]
+  casesAsPractitioner TreatmentCase[] @relation("CasePractitioner")
+  casesAsDoctor       TreatmentCase[] @relation("CaseDoctor")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  emailHash String
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([emailHash, createdAt])
+}
+
+model Patient {
+  id            String        @id @default(cuid())
+  // Encrypted JSON: names, date of birth, contact details, address,
+  // emergency contact, medical history and consent details.
+  data          String
+  emailHash     String?
+  phoneHash     String?
+  idNumberHash  String?
+  consentAt     DateTime
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  appointments  Appointment[]
+  cases         TreatmentCase[]
+
+  @@index([emailHash])
+  @@index([phoneHash])
+  @@index([idNumberHash])
+}
+
+model Appointment {
+  id                 String            @id @default(cuid())
+  patientId          String
+  patient            Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorId           String
+  doctor             User              @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  startsAt           DateTime
+  durationMinutes    Int               @default(30)
+  // Encrypted: the treatment and any notes are health information.
+  service            String
+  notes              String?
+  status             AppointmentStatus @default(BOOKED)
+  confirmationSentAt DateTime?
+  reminderSentAt     DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([startsAt])
+  @@index([doctorId, startsAt])
+  @@index([patientId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+// One treatment visit, started when the patient signs a consent form on the
+// tablet. Every clinical field is encrypted.
+model TreatmentCase {
+  id                    String       @id @default(cuid())
+  // Short number doctors quote when replying on WhatsApp, e.g. "YES 4821".
+  code                  String
+  type                  CaseType
+  status                CaseStatus   @default(CONSENTED)
+  patientId             String
+  patient               Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  // Encrypted JSON: form version, answers, acknowledgements, signature image.
+  consent               String
+  consentEmailedAt      DateTime?
+  practitionerId        String?
+  practitioner          User?        @relation("CasePractitioner", fields: [practitionerId], references: [id])
+  doctorId              String?
+  doctor                User?        @relation("CaseDoctor", fields: [doctorId], references: [id])
+  preVitals             String?
+  preVitalsAt           DateTime?
+  vitalsWithinRange     Boolean?
+  doctorRequestedAt     DateTime?
+  decisionTokenHash     String?      @unique
+  decisionTokenExpires  DateTime?
+  doctorDecision        Boolean?
+  doctorDecisionAt      DateTime?
+  doctorDecisionVia     String?
+  postVitals            String?
+  postVitalsAt          DateTime?
+  officeUse             String?
+  closingNotes          String?
+  practitionerSignature String?
+  outcome               CaseOutcome?
+  closedAt              DateTime?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  @@index([status])
+  @@index([doctorId, status])
+  @@index([patientId])
+  @@index([createdAt])
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
