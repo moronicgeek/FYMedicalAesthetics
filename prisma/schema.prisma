@@ -1,0 +1,116 @@
+// Patient-identifying and health fields are never stored in plain text.
+// They live in AES-256-GCM encrypted columns (see src/lib/crypto.ts).
+// Lookup columns (*Hash) hold keyed HMACs so we can find a patient by
+// email, phone or ID number without decrypting every record.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  DOCTOR
+  RECEPTION
+}
+
+enum AppointmentStatus {
+  BOOKED
+  CHECKED_IN
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+model User {
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  phone        String?
+  passwordHash String
+  role         Role
+  active       Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  sessions     Session[]
+  appointments Appointment[] @relation("DoctorAppointments")
+  auditLogs    AuditLog[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  emailHash String
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([emailHash, createdAt])
+}
+
+model Patient {
+  id            String        @id @default(cuid())
+  // Encrypted JSON: names, date of birth, contact details, address,
+  // emergency contact, medical history and consent details.
+  data          String
+  emailHash     String?
+  phoneHash     String?
+  idNumberHash  String?
+  consentAt     DateTime
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  appointments  Appointment[]
+
+  @@index([emailHash])
+  @@index([phoneHash])
+  @@index([idNumberHash])
+}
+
+model Appointment {
+  id                 String            @id @default(cuid())
+  patientId          String
+  patient            Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctorId           String
+  doctor             User              @relation("DoctorAppointments", fields: [doctorId], references: [id])
+  startsAt           DateTime
+  durationMinutes    Int               @default(30)
+  // Encrypted: the treatment and any notes are health information.
+  service            String
+  notes              String?
+  status             AppointmentStatus @default(BOOKED)
+  confirmationSentAt DateTime?
+  reminderSentAt     DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([startsAt])
+  @@index([doctorId, startsAt])
+  @@index([patientId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
