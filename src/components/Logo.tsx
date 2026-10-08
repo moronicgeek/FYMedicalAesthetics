@@ -1,14 +1,20 @@
+import Image from "next/image";
+
+// The clinic's circular "fy" logo. Its own lettering is too small to read at
+// header size, so the name is repeated beside it.
 export function Logo({ compact = false }: { compact?: boolean }) {
+  const size = compact ? 52 : 64;
   return (
     <span className="inline-flex items-center gap-3">
-      <svg aria-hidden="true" width="40" height="40" viewBox="0 0 40 40">
-        <rect width="40" height="40" rx="10" fill="#0b6e75" />
-        <path d="M17 9h6v8h8v6h-8v8h-6v-8H9v-6h8z" fill="#fff" />
-      </svg>
+      <Image src="/logo.png" alt="" width={size} height={Math.round((size * 449) / 480)} priority />
       <span className="leading-tight">
-        <span className="block text-lg font-bold text-brand-dark">FY Medical Aesthetics</span>
+        <span className="brand-name block">FY Medical Aesthetics</span>
         {!compact && <span className="block text-sm text-muted">Patient care portal</span>}
       </span>
     </span>
   );
+}
+
+export function LogoMark({ size = 168 }: { size?: number }) {
+  return <Image src="/logo.png" alt="FY Medical Aesthetics" width={size} height={Math.round((size * 449) / 480)} priority className="mx-auto" />;
 }
