@@ -40,10 +40,10 @@ export function PatientForm({ patientId, initial, submitLabel, kiosk = false }: 
           name="contactPreference"
           label="How should we send appointment reminders?"
           required
-          defaultValue={v.contactPreference ?? "sms"}
+          defaultValue={v.contactPreference ?? "whatsapp"}
           error={e.contactPreference}
           options={[
-            { value: "sms", label: "Text message (SMS)" },
+            { value: "whatsapp", label: "WhatsApp" },
             { value: "email", label: "Email" },
             { value: "both", label: "Both" },
           ]}

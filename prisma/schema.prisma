@@ -149,7 +149,7 @@ model AuditLog {
 // tablet. Every clinical field is encrypted.
 model TreatmentCase {
   id                    String       @id @default(cuid())
-  // Short number doctors quote when replying by SMS, e.g. "YES 4821".
+  // Short number doctors quote when replying on WhatsApp, e.g. "YES 4821".
   code                  String
   type                  CaseType
   status                CaseStatus   @default(CONSENTED)

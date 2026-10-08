@@ -6,7 +6,7 @@ const valid = {
   lastName: "Patel",
   dateOfBirth: "1958-04-12",
   phone: "+27 82 123 4567",
-  contactPreference: "sms",
+  contactPreference: "whatsapp",
   consentData: "on",
   consentAccuracy: "on",
   signedName: "Amina Patel",

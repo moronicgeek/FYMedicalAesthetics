@@ -21,7 +21,7 @@ This is the clinic's process for an IV drip, step by step.
    sugar and, optionally, oxygen saturation and temperature.
 4. **If every reading is within range**, the case moves on and the vitals are
    sent to the doctor to approve.
-   1. The doctor gets an SMS or WhatsApp with the patient's age, the drip, the
+   1. The doctor gets a WhatsApp message with the patient's age, the drip, the
       vitals and a link. They reply **YES** or **NO** (with the case number), or
       tap the link and choose. The practitioner's screen updates by itself.
    2. **YES**: the practitioner administers the drip.
@@ -46,7 +46,7 @@ clinic's medical lead should confirm them before going live.
 ## Appointments
 
 1. **Reception books an appointment** with a doctor. Double-booking a doctor is
-   blocked. The patient gets a confirmation by SMS and/or email (their choice)
+   blocked. The patient gets a confirmation by WhatsApp and/or email (their choice)
    and the doctor gets an email.
 2. **Reminders go out automatically** every morning for appointments in the next
    24 hours, and each doctor gets their list of upcoming patients.
@@ -72,12 +72,12 @@ cases) and **Reception** (patients and bookings, no clinical steps).
 - **Access log.** Every sign-in, patient view, search, change and booking is
   recorded with who did it and from where. Administrators can review it under
   **Access log**.
-- **Appointment messages carry no medical detail.** SMS and email only say when
+- **Appointment messages carry no medical detail.** WhatsApp and email only say when
   and where the appointment is. The doctor's approval request is the exception:
   it carries the vitals a doctor needs to decide, with the patient's surname
   reduced to an initial.
 - **The doctor's approval link** is a single-use token that expires after four
-  hours, and the clinic's own number is checked before an SMS reply is accepted.
+  hours, and the doctor's own number is checked before a WhatsApp reply is accepted.
   Twilio webhooks are verified by signature.
 - **Hardened HTTP.** HTTPS only (HSTS), strict Content Security Policy, no
   framing, and patient pages are marked `no-store` so browsers don't cache them.
@@ -92,8 +92,12 @@ reduced motion respected. Works on phones, tablets and desktops.
 
 ## Hosting with a custom domain
 
-Recommended: **Vercel** (app) + **Neon** (PostgreSQL). Both give you HTTPS on
-your own domain at no extra cost, and nothing needs patching or maintaining.
+> **Hosting isn't decided yet** (AWS is being considered). The app is a standard
+> Node.js (Next.js) server plus PostgreSQL, so it runs on any host that offers
+> those, a custom domain with HTTPS, and a scheduled call to
+> `GET /api/cron/reminders` with `Authorization: Bearer $CRON_SECRET`. The
+> steps below use Vercel + Neon as a worked example; the WhatsApp, email and
+> first-administrator steps are the same everywhere.
 
 > The clinic is a business, so use **Vercel Pro** (Hobby is for personal,
 > non-commercial use). Choose a Neon database region that fits your data
@@ -125,22 +129,51 @@ your own domain at no extra cost, and nothing needs patching or maintaining.
 6. **Email.** Create a [Resend](https://resend.com) account, verify the same
    domain (it gives you DNS records to add), and set `RESEND_API_KEY` and
    `EMAIL_FROM`.
-7. **SMS.** Create a [Twilio](https://twilio.com) account and set
-   `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and `TWILIO_FROM_NUMBER`. This is
-   what carries IV drip approvals to the doctor. For WhatsApp instead, set
-   `DOCTOR_CHANNEL=whatsapp` and `TWILIO_WHATSAPP_FROM`.
-8. **Doctor replies.** In Twilio, set the number's *A message comes in* webhook
-   to `POST https://<your domain>/api/twilio/inbound` so YES/NO replies reach
-   the app. Set `APP_URL` to the same domain: it signs the approval links and
-   verifies the webhook.
+7. **WhatsApp.** See [WhatsApp setup](#whatsapp-setup) below.
+8. **Doctor replies.** In Twilio, set the WhatsApp sender's *A message comes
+   in* webhook to `POST https://<your domain>/api/twilio/inbound` so YES/NO
+   replies reach the app. Set `APP_URL` to the same domain: it builds the
+   approval links and verifies the webhook.
 9. **Doctors' mobile numbers.** Add each doctor under **Staff** with the mobile
    number they will reply from.
 
 Reminders run daily at 06:00 UTC (`vercel.json`). On Vercel Pro you can run
 them hourly by changing the schedule to `0 * * * *`.
 
-Without email or SMS configured the app still works; the booking screen tells
-staff when no confirmation went out.
+Without email or WhatsApp configured the app still works; the booking screen
+tells staff when no confirmation went out, and a doctor's answer can be
+recorded by phone on the case screen.
+
+## WhatsApp setup
+
+All messages to patients and doctors go by WhatsApp through Twilio (and email,
+for patients who choose it). There is no SMS.
+
+1. In Twilio, register the clinic's number as a **WhatsApp sender** (this
+   links it to a Meta Business account). Set `TWILIO_ACCOUNT_SID`,
+   `TWILIO_AUTH_TOKEN` and `TWILIO_WHATSAPP_FROM` (the number, e.g.
+   `+27100000000`).
+2. WhatsApp only allows free text within 24 hours of the person last messaging
+   the clinic. Confirmations, reminders and approval requests are started by the
+   clinic, so each needs a **template approved by Meta**. Create these in
+   Twilio's *Content Template Builder*, submit them for WhatsApp approval, and
+   put each Content SID (`HX…`) in the matching variable:
+
+   | Variable | Category | Template text |
+   | --- | --- | --- |
+   | `TWILIO_TEMPLATE_BOOKING` | Utility | Hello {{1}}, your appointment with {{2}} at FY Medical Aesthetics is booked for {{3}}. Please call us if you need to change it. |
+   | `TWILIO_TEMPLATE_REMINDER` | Utility | Hello {{1}}, this is a reminder of your appointment with {{2}} at FY Medical Aesthetics on {{3}}. Please call us if you can't make it. |
+   | `TWILIO_TEMPLATE_DOCTOR_APPROVAL` | Utility | FY Medical Aesthetics IV drip approval #{{1}}. Patient: {{2}}. Drip: {{3}}. Vitals: {{4}}. Reply YES {{1}} to approve or NO {{1}} to decline, or open {{5}} |
+
+   The variables must stay in that order. Quick-reply buttons labelled **YES**
+   and **NO** can be added to the approval template: a tap is read the same as
+   typing the word, as long as only one case is waiting for that doctor (the
+   app asks for the case number otherwise).
+3. Until a template is approved, the app sends the same text as a plain
+   message. That works in Twilio's WhatsApp sandbox and within the 24-hour
+   window, which is enough for testing.
+4. Ask each doctor to save the clinic's WhatsApp number, and add their mobile
+   number under **Staff**.
 
 ## Running locally
 

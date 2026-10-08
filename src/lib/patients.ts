@@ -14,7 +14,7 @@ export type PatientRecord = {
   email?: string;
   phone: string;
   address?: string;
-  contactPreference: "sms" | "email" | "both";
+  contactPreference: "whatsapp" | "email" | "both";
   emergencyContact?: { name?: string; phone?: string; relationship?: string };
   medical: {
     conditions?: string;

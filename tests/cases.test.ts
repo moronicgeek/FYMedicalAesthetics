@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseDoctorReply } from "../src/lib/doctor-reply";
 import { checkVitals, DEFAULT_RANGES, parseVitals } from "../src/lib/vitals";
 
-describe("doctor SMS replies", () => {
+describe("doctor WhatsApp replies", () => {
   it("reads yes and no in the forms doctors actually type", () => {
     expect(parseDoctorReply("YES 4821")).toEqual({ approve: true, code: "4821" });
     expect(parseDoctorReply("yes")).toEqual({ approve: true, code: undefined });

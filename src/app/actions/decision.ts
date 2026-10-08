@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { findCaseByDecisionToken, recordDecision } from "@/lib/cases";
 
-// Doctors open the link from their SMS/WhatsApp without signing in; the
+// Doctors open the link from their WhatsApp message without signing in; the
 // single-use, time-limited token is the credential.
 export async function doctorDecisionAction(form: FormData) {
   const token = String(form.get("token") ?? "");

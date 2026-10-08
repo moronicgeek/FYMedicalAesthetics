@@ -42,7 +42,7 @@ export const patientSchema = z
       .pipe(z.email("Please enter a valid email address.").optional()),
     phone,
     address: optional,
-    contactPreference: z.enum(["sms", "email", "both"], { error: "Please choose how we should contact you." }),
+    contactPreference: z.enum(["whatsapp", "email", "both"], { error: "Please choose how we should contact you." }),
     emergencyName: optional,
     emergencyPhone: optional,
     emergencyRelationship: optional,
@@ -58,8 +58,8 @@ export const patientSchema = z
     consentMarketing: z.literal("on").optional(),
     signedName: required("your full name as a signature"),
   })
-  .refine((v) => v.contactPreference === "sms" || v.email, {
-    message: "Please enter an email address, or choose SMS reminders.",
+  .refine((v) => v.contactPreference === "whatsapp" || v.email, {
+    message: "Please enter an email address, or choose WhatsApp reminders.",
     path: ["email"],
   });
 

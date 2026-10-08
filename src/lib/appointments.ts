@@ -23,10 +23,18 @@ export async function sendBookingConfirmation(appointmentId: string) {
   const when = formatDateTime(appt.startsAt);
   const address = process.env.CLINIC_ADDRESS ? ` at ${process.env.CLINIC_ADDRESS}` : "";
 
+  const name = patient.preferredName || patient.firstName;
   const patientResults = await notifyPatient(
-    { name: patient.preferredName || patient.firstName, email: patient.email, phone: patient.phone, contactPreference: patient.contactPreference },
-    `Your appointment at ${clinicName()}`,
-    `Your appointment with ${appt.doctor.name} is booked for ${when}${address}. Please call us if you need to change it.`,
+    { name, email: patient.email, phone: patient.phone, contactPreference: patient.contactPreference },
+    {
+      subject: `Your appointment at ${clinicName()}`,
+      text: `Your appointment with ${appt.doctor.name} is booked for ${when}${address}. Please call us if you need to change it.`,
+    },
+    {
+      template: "bookingConfirmation",
+      variables: [name, appt.doctor.name, when],
+      fallbackText: `${clinicName()}: Hello ${name}, your appointment with ${appt.doctor.name} is booked for ${when}${address}. Please call us if you need to change it.`,
+    },
   );
   await notifyDoctor(
     appt.doctor,
@@ -54,10 +62,19 @@ export async function sendReminders(now = new Date(), hoursAhead = 24) {
 
   for (const appt of due) {
     const patient = decryptPatient(appt.patient);
+    const name = patient.preferredName || patient.firstName;
+    const when = formatDateTime(appt.startsAt);
     const results = await notifyPatient(
-      { name: patient.preferredName || patient.firstName, email: patient.email, phone: patient.phone, contactPreference: patient.contactPreference },
-      `Reminder: your appointment at ${clinicName()}`,
-      `This is a reminder of your appointment with ${appt.doctor.name} on ${formatDateTime(appt.startsAt)}. Please call us if you can't make it.`,
+      { name, email: patient.email, phone: patient.phone, contactPreference: patient.contactPreference },
+      {
+        subject: `Reminder: your appointment at ${clinicName()}`,
+        text: `This is a reminder of your appointment with ${appt.doctor.name} on ${when}. Please call us if you can't make it.`,
+      },
+      {
+        template: "appointmentReminder",
+        variables: [name, appt.doctor.name, when],
+        fallbackText: `${clinicName()}: Hello ${name}, this is a reminder of your appointment with ${appt.doctor.name} on ${when}. Please call us if you can't make it.`,
+      },
     );
     if (anySent(results)) {
       patientReminders++;

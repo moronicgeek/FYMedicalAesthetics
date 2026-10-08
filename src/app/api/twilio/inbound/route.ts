@@ -22,7 +22,7 @@ function twiml(message: string) {
 }
 
 // Configure in Twilio as the "A message comes in" webhook (HTTP POST) for the
-// SMS number and/or WhatsApp sender: https://<your domain>/api/twilio/inbound
+// WhatsApp sender: https://<your domain>/api/twilio/inbound
 export async function POST(req: Request) {
   const params = new URLSearchParams(await req.text());
   const url = `${(process.env.APP_URL || "").replace(/\/$/, "")}/api/twilio/inbound`;

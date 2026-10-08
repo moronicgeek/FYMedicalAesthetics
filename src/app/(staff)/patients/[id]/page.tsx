@@ -19,7 +19,7 @@ function Row({ label, value }: { label: string; value?: string }) {
 }
 
 const YES_NO: Record<string, string> = { yes: "Yes", no: "No", na: "Not applicable" };
-const CONTACT: Record<string, string> = { sms: "Text message", email: "Email", both: "Text message and email" };
+const CONTACT: Record<string, string> = { whatsapp: "WhatsApp", email: "Email", both: "WhatsApp and email" };
 
 export default async function PatientPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ saved?: string; booked?: string; notified?: string }> }) {
   const user = await requireUser();

@@ -90,7 +90,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
       {flags.closed && <div className="alert alert-success" role="status">Case closed and signed.</div>}
       {flags.emailed && <div className="alert alert-success" role="status">Consent form emailed to {p.email} and the clinic.</div>}
       {flags.emailfail && <div className="alert alert-error" role="alert">The consent email could not be sent. Check the email settings.</div>}
-      {flags.undelivered && <div className="alert alert-error" role="alert">The message to the doctor could not be sent. Check the SMS settings and the doctor&rsquo;s mobile number, or phone the doctor and record their answer below.</div>}
+      {flags.undelivered && <div className="alert alert-error" role="alert">The message to the doctor could not be sent. Check the WhatsApp settings and the doctor&rsquo;s mobile number, or phone the doctor and record their answer below.</div>}
       {flags.resent && <div className="alert alert-success" role="status">Approval request sent to the doctor again.</div>}
 
       <div className="flex flex-wrap items-end justify-between gap-4">

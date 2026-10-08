@@ -5,7 +5,7 @@ import { db } from "./db";
 import { decryptJson, encryptJson, decrypt, encrypt, normalisePhone, randomToken, sha256 } from "./crypto";
 import { CONSENT_FORMS, type CaseType } from "./consent-forms";
 import { createPatient, decryptPatient, findExistingPatient, updatePatient, type PatientRecord } from "./patients";
-import { clinicName, messageDoctor, sendEmail } from "./notify";
+import { clinicName, sendEmail, sendWhatsApp, type WhatsAppMessage } from "./notify";
 import { clinicInbox, getVitalRanges } from "./settings";
 import { checkVitals, formatVitals, type Vitals } from "./vitals";
 import { ageFrom } from "./time";
@@ -140,18 +140,23 @@ function appUrl() {
   return (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
 }
 
-export function doctorRequestMessage(c: { code: string; consent: ConsentRecord; preVitals: Vitals }, link: string) {
+export function doctorRequestMessage(c: { code: string; consent: ConsentRecord; preVitals: Vitals }, link: string): WhatsAppMessage {
   const p = c.consent.patient;
-  return [
-    `${clinicName()}: IV drip approval #${c.code}`,
-    `Patient: ${p.firstName} ${p.lastName.charAt(0).toUpperCase()}., ${ageFrom(p.dateOfBirth)}y`,
-    c.consent.treatment ? `Drip: ${c.consent.treatment}` : null,
-    `Vitals: ${formatVitals(c.preVitals)}`,
-    `Reply YES ${c.code} to approve or NO ${c.code} to decline.`,
-    `Or open: ${link}`,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  const patient = `${p.firstName} ${p.lastName.charAt(0).toUpperCase()}., ${ageFrom(p.dateOfBirth)}y`;
+  const drip = c.consent.treatment || "Not specified";
+  const vitals = formatVitals(c.preVitals);
+  return {
+    template: "doctorApproval",
+    variables: [c.code, patient, drip, vitals, link],
+    fallbackText: [
+      `${clinicName()}: IV drip approval #${c.code}`,
+      `Patient: ${patient}`,
+      `Drip: ${drip}`,
+      `Vitals: ${vitals}`,
+      `Reply YES ${c.code} to approve or NO ${c.code} to decline.`,
+      `Or open: ${link}`,
+    ].join("\n"),
+  };
 }
 
 export type PreVitalsResult = { status: "referred"; outOfRange: ReturnType<typeof checkVitals>["outOfRange"] } | { status: "sent"; delivered: boolean };
@@ -190,7 +195,7 @@ async function sendDoctorRequest(caseId: string, token: string, phone: string | 
   if (!phone) return false;
   const c = await getCase(caseId);
   if (!c?.preVitals) return false;
-  const result = await messageDoctor(normalisePhone(phone), doctorRequestMessage({ ...c, preVitals: c.preVitals }, `${appUrl()}/d/${token}`));
+  const result = await sendWhatsApp(normalisePhone(phone), doctorRequestMessage({ ...c, preVitals: c.preVitals }, `${appUrl()}/d/${token}`));
   return result.ok;
 }
 
@@ -241,7 +246,7 @@ export async function handleDoctorReply(fromPhone: string, body: string): Promis
   if (pending.length === 0) return reply.code ? `No case #${reply.code} is waiting for your approval.` : "No case is waiting for your approval.";
   if (pending.length > 1) return `More than one case is waiting. Please reply with the number, e.g. YES ${pending[0].code}.`;
   const c = pending[0];
-  await recordDecision(c.id, reply.approve, "sms");
+  await recordDecision(c.id, reply.approve, "WhatsApp");
   await db.auditLog.create({ data: { userId: doctors[0].id, action: reply.approve ? "doctor-approve" : "doctor-decline", entity: "TreatmentCase", entityId: c.id } });
   return reply.approve ? `Thank you. #${c.code} approved; the practitioner can proceed.` : `Thank you. #${c.code} declined; the practitioner will not proceed.`;
 }
