@@ -28,7 +28,7 @@ const nextConfig: NextConfig = {
     return [
       { source: "/:path*", headers: securityHeaders },
       // Patient pages must never be cached by browsers or shared proxies.
-      { source: "/(dashboard|patients|appointments|intake|staff)/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
+      { source: "/(dashboard|patients|appointments|intake|staff|cases|kiosk|d|settings|audit)/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
     ];
   },
 };

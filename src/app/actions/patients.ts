@@ -32,10 +32,10 @@ export async function savePatientAction(_prev: PatientFormState, form: FormData)
   if (match) {
     await updatePatient(match.id, record);
     await audit(user, "intake-update", "Patient", match.id);
-    redirect(kiosk ? "/kiosk/done?returning=1" : `/intake/done?returning=1&patient=${match.id}`);
+    redirect(kiosk ? "/kiosk/register/done?returning=1" : `/intake/done?returning=1&patient=${match.id}`);
   }
 
   const created = await createPatient(record);
   await audit(user, "intake-create", "Patient", created.id);
-  redirect(kiosk ? "/kiosk/done" : `/intake/done?patient=${created.id}`);
+  redirect(kiosk ? "/kiosk/register/done" : `/intake/done?patient=${created.id}`);
 }

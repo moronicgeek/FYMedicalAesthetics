@@ -79,7 +79,7 @@ export const staffSchema = z.object({
   name: required("the name"),
   email: z.email("Please enter a valid email address."),
   phone: optional,
-  role: z.enum(["ADMIN", "DOCTOR", "RECEPTION"]),
+  role: z.enum(["ADMIN", "DOCTOR", "PRACTITIONER", "RECEPTION"]),
   password: z.string().min(12, "Passwords must be at least 12 characters."),
 });
 

@@ -7,7 +7,9 @@ const CLINIC = () => process.env.CLINIC_NAME || "FY Medical Aesthetics";
 
 export type SendResult = { channel: "email" | "sms"; ok: boolean; skipped?: boolean; error?: string };
 
-export async function sendEmail(to: string, subject: string, text: string): Promise<SendResult> {
+export type Attachment = { filename: string; content: Buffer };
+
+export async function sendEmail(to: string | string[], subject: string, text: string, attachments: Attachment[] = []): Promise<SendResult> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
   if (!apiKey || !from) {
@@ -18,7 +20,13 @@ export async function sendEmail(to: string, subject: string, text: string): Prom
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [to], subject, text }),
+      body: JSON.stringify({
+        from,
+        to: Array.isArray(to) ? to : [to],
+        subject,
+        text,
+        attachments: attachments.map((a) => ({ filename: a.filename, content: a.content.toString("base64") })),
+      }),
     });
     return res.ok ? { channel: "email", ok: true } : { channel: "email", ok: false, error: `HTTP ${res.status}` };
   } catch (e) {
@@ -26,10 +34,13 @@ export async function sendEmail(to: string, subject: string, text: string): Prom
   }
 }
 
-export async function sendSms(to: string, body: string): Promise<SendResult> {
+export async function sendSms(to: string, body: string, channel: "sms" | "whatsapp" = "sms"): Promise<SendResult> {
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_FROM_NUMBER;
+  const smsFrom = process.env.TWILIO_FROM_NUMBER;
+  const waFrom = process.env.TWILIO_WHATSAPP_FROM;
+  const from = channel === "whatsapp" ? waFrom && `whatsapp:${waFrom}` : smsFrom;
+  if (channel === "whatsapp") to = `whatsapp:${to}`;
   if (!sid || !token || !from) {
     if (process.env.NODE_ENV !== "production") console.info("[sms skipped: not configured]");
     return { channel: "sms", ok: false, skipped: true };
@@ -69,4 +80,14 @@ export function anySent(results: SendResult[]) {
 
 export function clinicName() {
   return CLINIC();
+}
+
+// Doctors get IV drip approval requests by SMS, or WhatsApp when
+// DOCTOR_CHANNEL=whatsapp.
+export function doctorChannel(): "sms" | "whatsapp" {
+  return process.env.DOCTOR_CHANNEL === "whatsapp" ? "whatsapp" : "sms";
+}
+
+export async function messageDoctor(phone: string, body: string) {
+  return sendSms(phone, body, doctorChannel());
 }

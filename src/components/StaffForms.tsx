@@ -23,12 +23,13 @@ export function AddStaffForm() {
           error={e.role}
           options={[
             { value: "DOCTOR", label: "Doctor" },
+            { value: "PRACTITIONER", label: "Practitioner (nurse)" },
             { value: "RECEPTION", label: "Reception" },
             { value: "ADMIN", label: "Administrator" },
           ]}
         />
         <TextField name="email" label="Email" type="email" required defaultValue={v.email} error={e.email} hint="Doctors receive appointment notices here" />
-        <TextField name="phone" label="Mobile" type="tel" defaultValue={v.phone} error={e.phone} />
+        <TextField name="phone" label="Mobile" type="tel" defaultValue={v.phone} error={e.phone} hint="Doctors: IV drip approval requests are sent to this number" />
         <TextField name="password" label="Temporary password" type="password" required error={e.password} hint="At least 12 characters" />
       </div>
       <SubmitButton pendingText="Adding…">Add staff member</SubmitButton>

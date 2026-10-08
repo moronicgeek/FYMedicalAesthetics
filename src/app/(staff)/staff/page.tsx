@@ -5,7 +5,7 @@ import { AddStaffForm, ResetPasswordForm } from "@/components/StaffForms";
 
 export const metadata = { title: "Staff" };
 
-const ROLE = { ADMIN: "Administrator", DOCTOR: "Doctor", RECEPTION: "Reception" } as const;
+const ROLE = { ADMIN: "Administrator", DOCTOR: "Doctor", PRACTITIONER: "Practitioner (nurse)", RECEPTION: "Reception" } as const;
 
 export default async function StaffPage() {
   const admin = await requireUser(["ADMIN"]);

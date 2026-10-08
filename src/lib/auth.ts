@@ -25,7 +25,7 @@ export async function clientIp(): Promise<string | null> {
   return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip");
 }
 
-export type LoginResult = { ok: true } | { ok: false; error: string };
+export type LoginResult = { ok: true; userId: string } | { ok: false; error: string };
 
 export async function login(emailInput: string, password: string): Promise<LoginResult> {
   const email = normaliseEmail(emailInput);
@@ -50,23 +50,26 @@ export async function login(emailInput: string, password: string): Promise<Login
   }
 
   await db.loginAttempt.create({ data: { emailHash, success: true } });
+  await startSession(user.id);
+  return { ok: true, userId: user.id };
+}
+
+async function startSession(userId: string) {
+  const store = await cookies();
+  const previous = store.get(SESSION_COOKIE)?.value;
+  if (previous) await db.session.deleteMany({ where: { tokenHash: sha256(previous) } });
 
   const token = randomToken();
   const expiresAt = new Date(Date.now() + SESSION_HOURS * 3_600_000);
-  await db.session.create({ data: { tokenHash: sha256(token), userId: user.id, expiresAt } });
-
-  (await cookies()).set(SESSION_COOKIE, token, {
+  await db.session.create({ data: { tokenHash: sha256(token), userId, expiresAt } });
+  store.set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
     expires: expiresAt,
   });
-
-  await db.auditLog.create({
-    data: { userId: user.id, action: "login", entity: "User", entityId: user.id, ipAddress: await clientIp() },
-  });
-  return { ok: true };
+  await db.auditLog.create({ data: { userId, action: "login", entity: "User", entityId: userId, ipAddress: await clientIp() } });
 }
 
 export async function logout() {

@@ -2,10 +2,8 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import bcrypt from "bcryptjs";
-import { requireUser } from "@/lib/auth";
+import { login, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { db } from "@/lib/db";
 import { KIOSK_COOKIE } from "@/lib/kiosk";
 
 export async function startKioskAction() {
@@ -15,16 +13,22 @@ export async function startKioskAction() {
   redirect("/kiosk");
 }
 
-export type ExitState = { error?: string };
+export type ExitState = { error?: string; email?: string };
 
+function safeNext(next: string | undefined) {
+  return next && /^\/(cases|dashboard)(\/[\w-]*)?$/.test(next) ? next : "/dashboard";
+}
+
+// Any staff member can take over the tablet: they sign in here, which also
+// switches the device's session to them.
 export async function exitKioskAction(_prev: ExitState, form: FormData): Promise<ExitState> {
-  const user = await requireUser();
+  await requireUser();
+  const email = String(form.get("email") ?? "");
   const password = String(form.get("password") ?? "");
-  const row = await db.user.findUniqueOrThrow({ where: { id: user.id }, select: { passwordHash: true } });
-  if (!password || !(await bcrypt.compare(password, row.passwordHash))) {
-    return { error: "That password is not correct." };
-  }
+  if (!email || !password) return { error: "Please enter your email and password.", email };
+  const result = await login(email, password);
+  if (!result.ok) return { error: result.error, email };
   (await cookies()).delete(KIOSK_COOKIE);
-  await audit(user, "kiosk-exit", "Device");
-  redirect("/dashboard");
+  await audit({ id: result.userId }, "kiosk-exit", "Device");
+  redirect(safeNext(String(form.get("next") ?? "")));
 }

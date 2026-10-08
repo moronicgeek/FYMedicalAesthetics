@@ -3,7 +3,7 @@ import { KIOSK_COOKIE } from "./lib/kiosk";
 
 // Cheap first gate: no session cookie means straight to sign-in. Every page
 // and action still validates the session against the database itself.
-const PROTECTED = ["/dashboard", "/patients", "/appointments", "/intake", "/staff", "/audit", "/kiosk"];
+const PROTECTED = ["/dashboard", "/patients", "/appointments", "/intake", "/staff", "/audit", "/kiosk", "/cases", "/settings"];
 
 function redirectTo(req: NextRequest, pathname: string) {
   const url = req.nextUrl.clone();
@@ -18,7 +18,7 @@ export function middleware(req: NextRequest) {
   if (isProtected && !req.cookies.has("fy_session")) return redirectTo(req, "/login");
   // A device in patient check-in mode can only show the check-in screens
   // until a staff member exits with their password.
-  if (req.cookies.has(KIOSK_COOKIE) && !pathname.startsWith("/kiosk") && pathname !== "/login" && req.method === "GET") {
+  if (req.cookies.has(KIOSK_COOKIE) && !pathname.startsWith("/kiosk") && !pathname.startsWith("/d/") && pathname !== "/login" && req.method === "GET") {
     return redirectTo(req, "/kiosk");
   }
   return NextResponse.next();

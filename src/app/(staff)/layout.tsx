@@ -4,18 +4,20 @@ import { Logo } from "@/components/Logo";
 import { StaffNav } from "@/components/StaffNav";
 import { TextSize } from "@/components/TextSize";
 
-const ROLE_LABEL = { ADMIN: "Administrator", DOCTOR: "Doctor", RECEPTION: "Reception" } as const;
+const ROLE_LABEL = { ADMIN: "Administrator", DOCTOR: "Doctor", PRACTITIONER: "Practitioner", RECEPTION: "Reception" } as const;
 
 export default async function StaffLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
   const links = [
     { href: "/dashboard", label: "Today" },
+    { href: "/cases", label: "Treatments" },
     { href: "/intake", label: "New patient" },
     { href: "/patients", label: "Patients" },
     { href: "/appointments", label: "Appointments" },
     ...(user.role === "ADMIN"
       ? [
           { href: "/staff", label: "Staff" },
+          { href: "/settings", label: "Settings" },
           { href: "/audit", label: "Access log" },
         ]
       : []),
