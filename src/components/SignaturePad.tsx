@@ -20,7 +20,7 @@ export function SignaturePad({ name, label, error, defaultValue }: { name: strin
     ctx.lineWidth = 2.5;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.strokeStyle = "#13262a";
+    ctx.strokeStyle = "#1d1b19";
     return { ctx, width, height };
   }, []);
 
@@ -93,7 +93,7 @@ export function SignaturePad({ name, label, error, defaultValue }: { name: strin
         role="img"
         aria-labelledby={`${name}-label`}
         aria-describedby={error ? `${name}-error` : undefined}
-        className={`h-44 w-full touch-none rounded-xl border-2 bg-white ${error ? "border-danger" : "border-[#8fa5a8]"}`}
+        className={`h-44 w-full touch-none rounded-xl border-2 bg-white ${error ? "border-danger" : "border-field"}`}
         onPointerDown={start}
         onPointerMove={move}
         onPointerUp={end}

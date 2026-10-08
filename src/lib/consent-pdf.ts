@@ -6,9 +6,9 @@ import { formatDateTime } from "./time";
 
 const A4: [number, number] = [595.28, 841.89];
 const MARGIN = 50;
-const BRAND = rgb(0.03, 0.29, 0.31);
-const INK = rgb(0.07, 0.15, 0.16);
-const MUTED = rgb(0.27, 0.35, 0.36);
+const BRAND = rgb(0, 0, 0);
+const INK = rgb(0.11, 0.11, 0.1);
+const MUTED = rgb(0.34, 0.32, 0.3);
 
 // Standard PDF fonts only cover Windows-1252; swap anything else for a safe
 // equivalent so a stray emoji or smart symbol can't break the document.
