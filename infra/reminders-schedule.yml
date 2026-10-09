@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
   FY Medical Aesthetics daily reminders. An EventBridge schedule calls
   /api/cron/reminders on the app with "Authorization: Bearer <CRON_SECRET>".
-  Deploy in the same region as the app (e.g. af-south-1, Cape Town).
+  Deploy in the same region as the app (eu-west-1, Ireland).
 
 Parameters:
   AppUrl:

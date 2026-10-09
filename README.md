@@ -108,10 +108,13 @@ reduced motion respected. Works on phones, tablets and desktops.
 
 The app runs on **AWS only**: AWS Amplify Hosting for the Next.js server, a
 PostgreSQL database, and an EventBridge schedule for the daily reminders. Use
-the Cape Town region (`af-south-1`) for everything so patient data stays in
-South Africa (POPIA).
+the Ireland region (`eu-west-1`) for everything. Amplify isn't offered in Cape
+Town, and the server and database must sit in the same region or every page
+is slow. POPIA (section 72) allows patient data to be kept in the EU because
+GDPR gives equivalent protection; the clinic's privacy notice and consent forms
+should say records are stored with AWS in Ireland.
 
-1. **Database.** Create an Amazon RDS for PostgreSQL instance in `af-south-1`
+1. **Database.** Create an Amazon RDS for PostgreSQL instance in `eu-west-1`
    with encryption at rest and `rds.force_ssl` on. Amplify's servers can't join
    a private network (VPC), so the database needs a public endpoint protected by
    TLS and a long generated password. Set `DATABASE_URL` and `DIRECT_URL` to the
@@ -124,7 +127,7 @@ South Africa (POPIA).
    ```
    Store the encryption keys in a password manager as well. **If
    `ENCRYPTION_KEY` is lost, patient records cannot be recovered.**
-3. **Deploy.** In the Amplify console (region `af-south-1`), choose *Create new
+3. **Deploy.** In the Amplify console (region `eu-west-1`), choose *Create new
    app → GitHub*, pick this repo and the `main` branch. Amplify reads the build
    settings from `amplify.yml`. Add every variable from `.env.example` under
    *Hosting → Environment variables*. Each deploy runs the database migrations
@@ -143,7 +146,7 @@ South Africa (POPIA).
    [`infra/reminders-schedule.yml`](infra/reminders-schedule.yml), in the same
    region, giving it the app's URL and the same `CRON_SECRET`:
    ```sh
-   aws cloudformation deploy --region af-south-1 \
+   aws cloudformation deploy --region eu-west-1 \
      --stack-name fymedical-reminders \
      --template-file infra/reminders-schedule.yml \
      --capabilities CAPABILITY_IAM \
