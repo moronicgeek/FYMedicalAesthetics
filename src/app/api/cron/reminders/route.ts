@@ -14,8 +14,9 @@ function authorised(req: Request) {
   return expected.length === given.length && timingSafeEqual(expected, given);
 }
 
-// Called by the hosting scheduler (see vercel.json). Vercel sends
-// "Authorization: Bearer $CRON_SECRET" automatically.
+// Called daily by an AWS EventBridge schedule (infra/reminders-schedule.yml),
+// which sends "Authorization: Bearer $CRON_SECRET". GET also works for a
+// manual run with curl.
 export async function GET(req: Request) {
   if (!authorised(req)) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
   const hours = Number(process.env.REMINDER_HOURS_AHEAD || 24);
@@ -26,3 +27,5 @@ export async function GET(req: Request) {
   await db.auditLog.create({ data: { action: "reminders", entity: "System", entityId: `${result.patientReminders}/${result.appointments}` } });
   return NextResponse.json(result);
 }
+
+export const POST = GET;

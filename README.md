@@ -106,19 +106,20 @@ reduced motion respected. Works on phones, tablets and desktops.
 
 ## Hosting with a custom domain
 
-> **Hosting isn't decided yet** (AWS is being considered). The app is a standard
-> Node.js (Next.js) server plus PostgreSQL, so it runs on any host that offers
-> those, a custom domain with HTTPS, and a scheduled call to
-> `GET /api/cron/reminders` with `Authorization: Bearer $CRON_SECRET`. The
-> steps below use Vercel + Neon as a worked example; the WhatsApp, email and
-> first-administrator steps are the same everywhere.
+The app runs on **AWS only**: AWS Amplify Hosting for the Next.js server, a
+PostgreSQL database, and an EventBridge schedule for the daily reminders. Use
+the Ireland region (`eu-west-1`) for everything. Amplify isn't offered in Cape
+Town, and the server and database must sit in the same region or every page
+is slow. POPIA (section 72) allows patient data to be kept in the EU because
+GDPR gives equivalent protection; the clinic's privacy notice and consent forms
+should say records are stored with AWS in Ireland. The reasoning and the
+expected monthly costs are in [docs/hosting-and-costs.md](docs/hosting-and-costs.md).
 
-> The clinic is a business, so use **Vercel Pro** (Hobby is for personal,
-> non-commercial use). Choose a Neon database region that fits your data
-> protection obligations (for example POPIA or GDPR), and close to the clinic.
-
-1. **Database.** Create a Neon project. Copy the *pooled* connection string as
-   `DATABASE_URL` and the *direct* one as `DIRECT_URL`.
+1. **Database.** Create an Amazon RDS for PostgreSQL instance in `eu-west-1`
+   with encryption at rest and `rds.force_ssl` on. Amplify's servers can't join
+   a private network (VPC), so the database needs a public endpoint protected by
+   TLS and a long generated password. Set `DATABASE_URL` and `DIRECT_URL` to the
+   same connection string, ending in `?sslmode=require`.
 2. **Keys.** Generate two encryption keys and a cron secret:
    ```sh
    openssl rand -base64 32   # ENCRYPTION_KEY
@@ -127,32 +128,47 @@ reduced motion respected. Works on phones, tablets and desktops.
    ```
    Store the encryption keys in a password manager as well. **If
    `ENCRYPTION_KEY` is lost, patient records cannot be recovered.**
-3. **Deploy.** Import this GitHub repo into Vercel and add every variable from
-   `.env.example` under *Settings → Environment Variables*. Each deploy runs the
-   database migrations automatically (see `vercel.json`).
+3. **Deploy.** In the Amplify console (region `eu-west-1`), choose *Create new
+   app → GitHub*, pick this repo and the `main` branch. Amplify reads the build
+   settings from `amplify.yml`. Add every variable from `.env.example` under
+   *Hosting → Environment variables*. Each deploy runs the database migrations
+   first, and `amplify.yml` passes the variables through to the running app.
 4. **First administrator.** From your computer, with `DATABASE_URL` and
-   `DIRECT_URL` pointing at Neon:
+   `DIRECT_URL` pointing at the RDS database:
    ```sh
    ADMIN_EMAIL=you@yourclinic.com ADMIN_PASSWORD='a long password' ADMIN_NAME='Your Name' npm run db:seed
    ```
    Then sign in and add doctors and reception under **Staff**.
-5. **Custom domain.** In Vercel go to *Settings → Domains*, add e.g.
-   `portal.fymedical.co.za`, and create the DNS record Vercel shows you (a
-   `CNAME` to `cname.vercel-dns.com` for a subdomain) at your domain registrar.
-   Vercel issues the HTTPS certificate automatically.
-6. **Email.** Create a [Resend](https://resend.com) account, verify the same
+5. **Custom domain.** In Amplify go to *Hosting → Custom domains*, add e.g.
+   `portal.fymedical.co.za`, and create the DNS records Amplify shows you at your
+   domain registrar (or let Amplify do it if the domain is in Route 53). Amplify
+   issues the HTTPS certificate automatically. Set `APP_URL` to this address.
+6. **Reminders.** Create the daily schedule from
+   [`infra/reminders-schedule.yml`](infra/reminders-schedule.yml), in the same
+   region, giving it the app's URL and the same `CRON_SECRET`:
+   ```sh
+   aws cloudformation deploy --region eu-west-1 \
+     --stack-name fymedical-reminders \
+     --template-file infra/reminders-schedule.yml \
+     --capabilities CAPABILITY_IAM \
+     --parameter-overrides AppUrl=https://portal.fymedical.co.za CronSecret=<CRON_SECRET>
+   ```
+   (Or upload the file in the CloudFormation console.) It calls
+   `/api/cron/reminders` every day at 06:00 Johannesburg time; change the
+   `Schedule` parameter (UTC) to run it at another time or hourly. EventBridge
+   keeps the secret in AWS Secrets Manager. If you change `CRON_SECRET`, deploy
+   the stack again with the new value. To test it by hand:
+   `curl -H "Authorization: Bearer $CRON_SECRET" https://<your domain>/api/cron/reminders`.
+7. **Email.** Create a [Resend](https://resend.com) account, verify the same
    domain (it gives you DNS records to add), and set `RESEND_API_KEY` and
    `EMAIL_FROM`.
-7. **WhatsApp.** See [WhatsApp setup](#whatsapp-setup) below.
-8. **Doctor replies.** In Twilio, set the WhatsApp sender's *A message comes
+8. **WhatsApp.** See [WhatsApp setup](#whatsapp-setup) below.
+9. **Doctor replies.** In Twilio, set the WhatsApp sender's *A message comes
    in* webhook to `POST https://<your domain>/api/twilio/inbound` so YES/NO
-   replies reach the app. Set `APP_URL` to the same domain: it builds the
+   replies reach the app. `APP_URL` must be exactly this domain: it builds the
    approval links and verifies the webhook.
-9. **Doctors' mobile numbers.** Add each doctor under **Staff** with the mobile
-   number they will reply from.
-
-Reminders run daily at 06:00 UTC (`vercel.json`). On Vercel Pro you can run
-them hourly by changing the schedule to `0 * * * *`.
+10. **Doctors' mobile numbers.** Add each doctor under **Staff** with the mobile
+    number they will reply from.
 
 Without email or WhatsApp configured the app still works; the booking screen
 tells staff when no confirmation went out, and a doctor's answer can be
