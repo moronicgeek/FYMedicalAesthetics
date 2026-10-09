@@ -24,11 +24,13 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Signatures and ID photos are sent as images inside form posts.
+  experimental: { serverActions: { bodySizeLimit: "3mb" } },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
       // Patient pages must never be cached by browsers or shared proxies.
-      { source: "/(dashboard|patients|appointments|intake|staff|cases|kiosk|d|settings|audit)/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
+      { source: "/(dashboard|checkin|patients|appointments|intake|staff|cases|kiosk|d|settings|audit)/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
     ];
   },
 };

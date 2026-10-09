@@ -26,11 +26,18 @@ enum CaseType {
   LASER
 }
 
-// IV drip: CONSENTED -> (vitals) -> AWAITING_DOCTOR -> IN_PROGRESS -> READY_TO_CLOSE -> CLOSED
-//          vitals out of range: CONSENTED -> REFERRED -> CLOSED
-//          doctor says no:      AWAITING_DOCTOR -> DECLINED -> CLOSED
-// Other treatments: CONSENTED -> CLOSED
+// The client checks in with their name, ID number and treatment (QUEUED). A
+// practitioner picks them up and records their details, medical history and,
+// for an IV drip, vitals (ASSESSMENT). The patient only signs once cleared.
+// IV drip: QUEUED -> ASSESSMENT -> AWAITING_DOCTOR -> AWAITING_SIGNATURE -> IN_PROGRESS -> READY_TO_CLOSE -> CLOSED
+//          vitals out of range: ASSESSMENT -> REFERRED -> CLOSED (nothing signed)
+//          doctor says no:      AWAITING_DOCTOR -> DECLINED -> CLOSED (nothing signed)
+// Other treatments: QUEUED -> ASSESSMENT -> AWAITING_SIGNATURE -> IN_PROGRESS -> CLOSED
+// CONSENTED is the self-service kiosk route, where the patient signs first.
 enum CaseStatus {
+  QUEUED
+  ASSESSMENT
+  AWAITING_SIGNATURE
   CONSENTED
   AWAITING_DOCTOR
   IN_PROGRESS
@@ -44,6 +51,7 @@ enum CaseOutcome {
   COMPLETED
   REFERRED_VITALS
   DOCTOR_DECLINED
+  CANCELLED
 }
 
 enum AppointmentStatus {
@@ -98,6 +106,8 @@ model Patient {
   emailHash     String?
   phoneHash     String?
   idNumberHash  String?
+  // Encrypted JPEG data URL of the patient's ID document, if photographed.
+  idPhoto       String?
   consentAt     DateTime
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -145,17 +155,20 @@ model AuditLog {
   @@index([createdAt])
 }
 
-// One treatment visit, started when the patient signs a consent form on the
-// tablet. Every clinical field is encrypted.
+// One treatment visit, from check-in to closing. Every clinical field is
+// encrypted.
 model TreatmentCase {
   id                    String       @id @default(cuid())
   // Short number doctors quote when replying on WhatsApp, e.g. "YES 4821".
   code                  String
   type                  CaseType
-  status                CaseStatus   @default(CONSENTED)
-  patientId             String
-  patient               Patient      @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  // Encrypted JSON: form version, answers, acknowledgements, signature image.
+  status                CaseStatus   @default(QUEUED)
+  // Linked at check-in for a returning patient, otherwise once the
+  // practitioner has taken their details.
+  patientId             String?
+  patient               Patient?     @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  // Encrypted JSON: patient details, form version, answers and, once signed,
+  // the signature image.
   consent               String
   consentEmailedAt      DateTime?
   practitionerId        String?

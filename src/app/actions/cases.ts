@@ -7,12 +7,58 @@ import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { CONSENT_FORMS, isCaseType } from "@/lib/consent-forms";
-import { closeCase, createCaseFromConsent, emailConsent, getCase, recordDecision, recordPostVitals, recordPreVitals, resendDoctorRequest, type ConsentRecord, type OfficeUse } from "@/lib/cases";
-import { validSignature } from "@/lib/signature";
+import { cookies } from "next/headers";
+import {
+  cancelCase,
+  checkInCase,
+  closeCase,
+  createCaseFromConsent,
+  emailConsent,
+  getCase,
+  recordDecision,
+  recordPostVitals,
+  recordPreVitals,
+  resendDoctorRequest,
+  saveAssessment,
+  signConsent,
+  startCase,
+  type CaseRecord,
+  type ConsentRecord,
+  type OfficeUse,
+} from "@/lib/cases";
+import type { ConsentFormDef } from "@/lib/consent-forms";
+import { KIOSK_COOKIE } from "@/lib/kiosk";
+import { validIdPhoto, validSignature } from "@/lib/signature";
 import { formToObject, type FieldErrors } from "@/lib/validation";
 import { parseVitals } from "@/lib/vitals";
 
 export type ConsentFormState = { errors?: FieldErrors; values?: Record<string, string> };
+
+function parseHistory(def: ConsentFormDef, values: Record<string, string>, errors: FieldErrors) {
+  const answers: CaseRecord["answers"] = {};
+  for (const q of def.questions) {
+    const a = values[`q_${q.id}`];
+    if (a !== "yes" && a !== "no") errors[`q_${q.id}`] = "Please answer yes or no.";
+    else answers[q.id] = a;
+  }
+  if (Object.values(answers).includes("yes") && def.detailFields.some((d) => d.id === "yesDetails") && !values.yesDetails?.trim()) {
+    errors.yesDetails = "There is a yes answer above. Please give details.";
+  }
+  return answers;
+}
+
+function checkAcknowledgements(def: ConsentFormDef, values: Record<string, string>, errors: FieldErrors) {
+  def.acknowledgements.forEach((_, i) => {
+    if (values[`ack_${i}`] !== "on") errors[`ack_${i}`] = "Please tick to confirm.";
+  });
+}
+
+function parseTreatment(def: ConsentFormDef, values: Record<string, string>, errors: FieldErrors) {
+  const chosen = def.treatmentChoice?.options.filter((o) => values[`treatment_${o}`] === "on") ?? [];
+  const treatment = [...chosen, values.treatmentOther?.trim()].filter(Boolean).join(", ");
+  if (def.treatmentChoice && !treatment && def.type !== "LASER") errors.treatment = `Please fill in: ${def.treatmentChoice.label.toLowerCase()}.`;
+  return treatment || (def.type === "LASER" ? "Laser" : undefined);
+}
 
 const patientDetails = z.object({
   firstName: z.string().trim().min(1, "Please enter your first name."),
@@ -35,23 +81,9 @@ export async function submitConsentAction(_prev: ConsentFormState, form: FormDat
   const parsed = patientDetails.safeParse(values);
   if (!parsed.success) for (const i of parsed.error.issues) errors[String(i.path[0])] ??= i.message;
 
-  const answers: ConsentRecord["answers"] = {};
-  for (const q of def.questions) {
-    const a = values[`q_${q.id}`];
-    if (a !== "yes" && a !== "no") errors[`q_${q.id}`] = "Please answer yes or no.";
-    else answers[q.id] = a;
-  }
-  def.acknowledgements.forEach((_, i) => {
-    if (values[`ack_${i}`] !== "on") errors[`ack_${i}`] = "Please tick to confirm.";
-  });
-  if (Object.values(answers).includes("yes") && def.detailFields.some((d) => d.id === "yesDetails") && !values.yesDetails?.trim()) {
-    errors.yesDetails = "You answered yes to a question above. Please give details.";
-  }
-
-  const chosen = def.treatmentChoice?.options.filter((o) => values[`treatment_${o}`] === "on") ?? [];
-  const other = values.treatmentOther?.trim();
-  const treatment = [...chosen, other].filter(Boolean).join(", ");
-  if (def.treatmentChoice && !treatment && type !== "LASER") errors.treatment = `Please fill in: ${def.treatmentChoice.label.toLowerCase()}.`;
+  const answers = parseHistory(def, values, errors);
+  checkAcknowledgements(def, values, errors);
+  const treatment = parseTreatment(def, values, errors);
 
   if (!validSignature(values.signature)) errors.signature = "Please sign in the box.";
 
@@ -70,7 +102,7 @@ export async function submitConsentAction(_prev: ConsentFormState, form: FormDat
       email: parsed.data.email,
       idNumber: parsed.data.idNumber || undefined,
     },
-    treatment: treatment || (type === "LASER" ? "Laser" : undefined),
+    treatment,
     answers,
     details: Object.fromEntries(def.detailFields.map((d) => [d.id, values[d.id]?.trim() ?? ""])),
     emergency: { name: values.emergencyName?.trim() || undefined, phone: values.emergencyPhone?.trim() || undefined },
@@ -168,4 +200,134 @@ export async function resendConsentAction(form: FormData) {
   const result = await emailConsent(id);
   await audit(user, "consent-resent", "TreatmentCase", id);
   redirect(`/cases/${id}?${result.ok ? "emailed=1" : "emailfail=1"}`);
+}
+
+// --- Practitioner-led intake ----------------------------------------------
+
+const checkInSchema = z.object({
+  firstName: z.string().trim().min(1, "Please enter the first name."),
+  lastName: z.string().trim().min(1, "Please enter the surname."),
+  idNumber: z.string().trim().min(5, "Please enter the ID or passport number."),
+});
+
+export async function checkInAction(_prev: ConsentFormState, form: FormData): Promise<ConsentFormState> {
+  const user = await requireUser();
+  const values = formToObject(form);
+  const errors: FieldErrors = {};
+  const parsed = checkInSchema.safeParse(values);
+  if (!parsed.success) for (const i of parsed.error.issues) errors[String(i.path[0])] ??= i.message;
+  if (!values.formType || !isCaseType(values.formType)) errors.formType = "Please choose the treatment.";
+  if (Object.keys(errors).length || !parsed.success) return { errors, values };
+
+  const startNow = values.intent === "start" && user.role !== "RECEPTION";
+  const created = await checkInCase({ type: values.formType as keyof typeof CONSENT_FORMS, ...parsed.data }, startNow ? user : undefined);
+  await audit(user, startNow ? "case-started" : "checked-in", "TreatmentCase", created.id);
+  redirect(startNow ? `/cases/${created.id}` : `/cases?checkedin=1`);
+}
+
+export async function startCaseAction(form: FormData) {
+  const user = await requireUser(["ADMIN", "DOCTOR", "PRACTITIONER"]);
+  const id = String(form.get("caseId"));
+  await startCase(id, user.id);
+  await audit(user, "case-started", "TreatmentCase", id);
+  redirect(`/cases/${id}`);
+}
+
+export async function cancelCaseAction(form: FormData) {
+  const user = await requireUser();
+  const id = String(form.get("caseId"));
+  if (await cancelCase(id)) await audit(user, "case-cancelled", "TreatmentCase", id);
+  redirect("/cases");
+}
+
+const assessmentDetails = z.object({
+  firstName: z.string().trim().min(1, "Please enter the first name."),
+  lastName: z.string().trim().min(1, "Please enter the surname."),
+  idNumber: z.string().trim().min(5, "Please enter the ID or passport number."),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Please enter the date of birth."),
+  phone: z.string().trim().regex(/^\+?[\d\s()-]{7,20}$/, "Please enter a valid phone number."),
+  email: z.email("Please enter a valid email address. The signed form is sent here."),
+});
+
+export async function assessmentAction(_prev: StepState, form: FormData): Promise<StepState> {
+  const user = await requireUser(["ADMIN", "DOCTOR", "PRACTITIONER"]);
+  const values = formToObject(form);
+  const c = await loadOpenCase(values.caseId);
+  if (c.status !== "ASSESSMENT") return { errors: { form: "This step has already been done." }, values };
+  const def = CONSENT_FORMS[c.type];
+  const errors: FieldErrors = {};
+
+  const parsed = assessmentDetails.safeParse(values);
+  if (!parsed.success) for (const i of parsed.error.issues) errors[String(i.path[0])] ??= i.message;
+  const answers = parseHistory(def, values, errors);
+  const treatment = parseTreatment(def, values, errors);
+  const idPhoto = values.idPhoto || undefined;
+  if (idPhoto && !validIdPhoto(idPhoto)) errors.idPhoto = "The ID photo couldn't be read. Please take it again.";
+
+  const iv = c.type === "IV_DRIP";
+  const vitalsResult = iv ? parseVitals(values) : {};
+  if (vitalsResult.errors) Object.assign(errors, vitalsResult.errors);
+  const doctor = iv ? await db.user.findFirst({ where: { id: values.doctorId, role: "DOCTOR", active: true } }) : null;
+  if (iv && !doctor) errors.doctorId = "Please choose the doctor to approve.";
+  else if (iv && !doctor!.phone) errors.doctorId = `${doctor!.name} has no mobile number saved. An administrator can add it on the Staff page.`;
+
+  if (Object.keys(errors).length || !parsed.success) {
+    // The photo is kept in the browser; don't send it back with the form.
+    const { idPhoto: _photo, ...rest } = values;
+    return { errors: Object.keys(errors).length ? errors : { form: "Please check the form." }, values: rest };
+  }
+
+  const record: CaseRecord = {
+    ...c.consent,
+    formVersion: def.version,
+    patient: {
+      firstName: parsed.data.firstName,
+      lastName: parsed.data.lastName,
+      idNumber: parsed.data.idNumber,
+      dateOfBirth: parsed.data.dateOfBirth,
+      phone: parsed.data.phone,
+      email: parsed.data.email,
+    },
+    treatment,
+    answers,
+    details: Object.fromEntries(def.detailFields.map((d) => [d.id, values[d.id]?.trim() ?? ""])),
+    emergency: { name: values.emergencyName?.trim() || undefined, phone: values.emergencyPhone?.trim() || undefined },
+  };
+  await saveAssessment(c.id, record, idPhoto, user);
+  await audit(user, "assessment-saved", "TreatmentCase", c.id);
+
+  if (!iv) redirect(`/cases/${c.id}`);
+  const result = await recordPreVitals(c.id, user.id, vitalsResult.vitals!, doctor!);
+  await audit(user, result.status === "referred" ? "vitals-out-of-range" : "vitals-sent-to-doctor", "TreatmentCase", c.id);
+  revalidatePath(`/cases/${c.id}`);
+  redirect(`/cases/${c.id}${result.status === "sent" && !result.delivered ? "?undelivered=1" : ""}`);
+}
+
+// Locks the tablet to this patient's signing screen. A staff member signs in
+// again to take it back, so the patient can't reach anything else.
+export async function handToPatientAction(form: FormData) {
+  const user = await requireUser(["ADMIN", "DOCTOR", "PRACTITIONER"]);
+  const id = String(form.get("caseId"));
+  const c = await loadOpenCase(id);
+  if (c.status !== "AWAITING_SIGNATURE") redirect(`/cases/${id}`);
+  (await cookies()).set(KIOSK_COOKIE, "1", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
+  await audit(user, "handed-to-patient", "TreatmentCase", id);
+  redirect(`/kiosk/sign/${id}`);
+}
+
+export async function signConsentAction(_prev: ConsentFormState, form: FormData): Promise<ConsentFormState> {
+  const user = await requireUser();
+  const values = formToObject(form);
+  const c = await loadOpenCase(values.caseId);
+  const def = CONSENT_FORMS[c.type];
+  const errors: FieldErrors = {};
+  checkAcknowledgements(def, values, errors);
+  if (!values.signedName?.trim()) errors.signedName = "Please type your full name.";
+  if (!validSignature(values.signature)) errors.signature = "Please sign in the box.";
+  if (Object.keys(errors).length) return { errors, values };
+  if (!(await signConsent(c.id, values.signedName.trim(), values.signature))) return { errors: { form: "This form has already been signed." }, values };
+  await audit(user, "consent-signed", "TreatmentCase", c.id);
+  // Saved first; the email is best-effort and can be resent from the case.
+  await emailConsent(c.id).catch(() => undefined);
+  redirect(`/kiosk/case/${c.id}?signed=1`);
 }

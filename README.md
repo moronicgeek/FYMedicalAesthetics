@@ -6,42 +6,56 @@ doctors, and remind patients and doctors before each appointment.
 
 ## The IV drip visit
 
-This is the clinic's process for an IV drip, step by step.
+This is the clinic's process for an IV drip (process flow V4), step by step.
 
-1. **Consent on the tablet.** Reception taps **Hand device to patient**; the
-   tablet switches to check-in mode, where only the consent screens are
-   reachable. The patient picks their treatment, fills in the clinic's consent
-   form and signs it with their finger. The signed form is saved immediately and
-   emailed as a PDF to the patient and to the clinic inbox
-   (`CLINIC_INBOX_EMAIL`).
-2. **The case stays open.** The tablet shows a thank-you screen with the case
-   reference. A practitioner continues on that tablet, or opens the case from
-   any other device under **Treatments**.
-3. **Vital signs.** The practitioner records blood pressure, heart rate, blood
-   sugar and, optionally, oxygen saturation and temperature.
-4. **If every reading is within range**, the case moves on and the vitals are
-   sent to the doctor to approve.
-   1. The doctor gets a WhatsApp message with the patient's age, the drip, the
-      vitals and a link. They reply **YES** or **NO** (with the case number), or
-      tap the link and choose. The practitioner's screen updates by itself.
-   2. **YES**: the practitioner administers the drip.
-   3. The case stays open. When the drip is finished, a second set of vitals is
-      recorded, along with the drip's batch number and expiry.
-   4. The practitioner closes the case with optional notes (up to 200
-      characters) and their signature.
-5. **If any reading is outside the range**, nothing is sent to the doctor. The
-   screen says in plain words not to administer the drip and to refer the
-   patient to a doctor immediately. The practitioner closes the case with notes
-   and a signature, and it is recorded as "not treated, referred".
-6. **If the doctor says NO**, the same applies: do not proceed, refer the
-   patient, then close the case with notes and a signature.
+1. **Check-in.** Reception or the practitioner takes the client's first name,
+   surname, ID or passport number and treatment under **Check in**. The client
+   joins the **Waiting** list on the Today and Treatments screens. A returning
+   client is recognised from their ID number.
+2. **The practitioner starts the case** from the waiting list (or straight
+   from the check-in screen) and fills in, with the client:
+   1. **Patient details.** The date of birth is read from a South African ID
+      number, and a returning client's contact details are filled in. A photo
+      of the ID document can be taken with the tablet camera; it is stored
+      encrypted.
+   2. **Medical history.** The questions from the clinic's consent form.
+   3. **Vital signs.** Blood pressure, blood sugar, heart rate and temperature
+      are required; oxygen saturation is optional.
+3. **Submit.**
+   - **If every reading is within range**, the doctor gets a WhatsApp message
+     with the patient's age, the drip, the vitals and a link. They reply
+     **YES** or **NO** (with the case number), or tap the link and choose. The
+     practitioner's screen updates by itself.
+   - **If any reading is outside the range**, nothing is sent to the doctor.
+     The screen says not to administer the drip and to refer the patient to a
+     doctor immediately. The patient signs nothing.
+4. **Doctor says YES: the patient signs.** The practitioner taps **Hand the
+   tablet to the patient**. The tablet locks to a screen with only that
+   client's consent conditions, acknowledgements and signature box. The signed
+   form is saved and emailed as a PDF to the patient and the clinic inbox
+   (`CLINIC_INBOX_EMAIL`). A staff member signs in again to take the tablet
+   back.
+5. **The drip.** When it is finished, the practitioner records a second set of
+   vitals, with the drip's batch number and expiry.
+6. **Close.** The practitioner closes the case with optional notes (up to 200
+   characters) and their signature.
 
-Botox, filler, peel, microneedling and laser visits use the same consent and
-closing steps, without the vitals and doctor approval.
+If the doctor says **NO**, or the vitals were out of range, the practitioner
+does not proceed, refers the patient, and closes the case with notes and a
+signature. A client who leaves before being seen can be removed from the
+waiting list.
 
-The ranges that decide step 4 or 5, and the default on-call doctor, are under
+Botox, filler, peel, microneedling and laser visits follow the same check-in,
+details and history, signing and closing steps, without the vitals and doctor
+approval.
+
+The ranges that decide step 3, and the default on-call doctor, are under
 **Settings** (administrators only). The defaults are a starting point: the
 clinic's medical lead should confirm them before going live.
+
+The original self-service check-in, where the patient fills in and signs the
+whole form on the tablet first, is still in the app under `/kiosk` but no
+longer linked from the staff screens.
 
 ## Appointments
 

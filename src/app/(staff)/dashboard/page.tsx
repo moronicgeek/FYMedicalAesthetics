@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { startKioskAction } from "@/app/actions/kiosk";
 import { AppointmentList } from "@/components/AppointmentList";
 import { AutoRefresh } from "@/components/AutoRefresh";
+import { WaitingList } from "@/components/WaitingList";
 import { db } from "@/lib/db";
 import { CASE_STATUS_LABEL, decryptCase, OPEN_STATUSES } from "@/lib/cases";
 import { CONSENT_FORMS } from "@/lib/consent-forms";
@@ -20,9 +20,10 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     startsAt: { gte: start, lt: end },
     ...(user.role === "DOCTOR" ? { doctorId: user.id } : {}),
   });
-  const openCases = (await db.treatmentCase.findMany({ where: { status: { in: OPEN_STATUSES } }, orderBy: { createdAt: "asc" } })).map(decryptCase);
+  const allOpen = (await db.treatmentCase.findMany({ where: { status: { in: OPEN_STATUSES } }, orderBy: { createdAt: "asc" } })).map(decryptCase);
+  const waitingCases = allOpen.filter((c) => c.status === "QUEUED");
+  const openCases = allOpen.filter((c) => c.status !== "QUEUED");
   const active = items.filter((a) => a.status !== "CANCELLED");
-  const waiting = items.filter((a) => a.status === "CHECKED_IN").length;
   const completed = items.filter((a) => a.status === "COMPLETED").length;
 
   return (
@@ -35,18 +36,16 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           <h1 className="page-title">Good day, {user.name.split(" ")[0]}</h1>
         </div>
         <div className="flex flex-wrap gap-3">
-          <form action={startKioskAction}>
-            <button type="submit" className="btn btn-secondary">Hand device to patient</button>
-          </form>
+          <Link href="/checkin" className="btn btn-primary">Check in a client</Link>
           <Link href="/intake" className="btn btn-secondary">New patient</Link>
-          <Link href="/appointments/new" className="btn btn-primary">Book appointment</Link>
+          <Link href="/appointments/new" className="btn btn-secondary">Book appointment</Link>
         </div>
       </div>
 
       <dl className="grid gap-4 sm:grid-cols-4">
         {[
           { label: user.role === "DOCTOR" ? "Your appointments today" : "Appointments today", value: active.length },
-          { label: "Arrived and waiting", value: waiting },
+          { label: "Waiting for a practitioner", value: waitingCases.length },
           { label: "Treatments in progress", value: openCases.length },
           { label: "Completed", value: completed },
         ].map((s) => (
@@ -56,6 +55,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           </div>
         ))}
       </dl>
+
+      <WaitingList cases={waitingCases} canStart={user.role !== "RECEPTION"} />
 
       {openCases.length > 0 && (
         <section className="card" aria-labelledby="cases-heading">
@@ -69,7 +70,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                   </Link>
                   <p className="muted">{CONSENT_FORMS[c.type].shortName} · #{c.code}</p>
                 </div>
-                <span className={`badge ${["REFERRED", "DECLINED"].includes(c.status) ? "bg-danger-soft text-danger" : c.status === "AWAITING_DOCTOR" ? "badge-CHECKED_IN" : "badge-BOOKED"}`}>
+                <span className={`badge ${["REFERRED", "DECLINED"].includes(c.status) ? "bg-danger-soft text-danger" : ["AWAITING_DOCTOR", "AWAITING_SIGNATURE"].includes(c.status) ? "badge-CHECKED_IN" : "badge-BOOKED"}`}>
                   {CASE_STATUS_LABEL[c.status]}
                 </span>
               </li>

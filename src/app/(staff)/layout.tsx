@@ -10,6 +10,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   const user = await requireUser();
   const links = [
     { href: "/dashboard", label: "Today" },
+    { href: "/checkin", label: "Check in" },
     { href: "/cases", label: "Treatments" },
     { href: "/intake", label: "New patient" },
     { href: "/patients", label: "Patients" },
