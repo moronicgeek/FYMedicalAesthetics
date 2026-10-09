@@ -204,10 +204,16 @@ export async function resendConsentAction(form: FormData) {
 
 // --- Practitioner-led intake ----------------------------------------------
 
+const phoneNumber = z.string().trim().regex(/^\+?[\d\s()-]{7,20}$/, "Please enter a valid phone number.");
+const optionalPhone = z.union([z.literal(""), phoneNumber]).optional().transform((v) => v || undefined);
+
 const checkInSchema = z.object({
   firstName: z.string().trim().min(1, "Please enter the first name."),
   lastName: z.string().trim().min(1, "Please enter the surname."),
   idNumber: z.string().trim().min(5, "Please enter the ID or passport number."),
+  phone: phoneNumber,
+  emergencyName: z.string().trim().optional().transform((v) => v || undefined),
+  emergencyPhone: optionalPhone,
 });
 
 export async function checkInAction(_prev: ConsentFormState, form: FormData): Promise<ConsentFormState> {
@@ -245,7 +251,7 @@ const assessmentDetails = z.object({
   lastName: z.string().trim().min(1, "Please enter the surname."),
   idNumber: z.string().trim().min(5, "Please enter the ID or passport number."),
   dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Please enter the date of birth."),
-  phone: z.string().trim().regex(/^\+?[\d\s()-]{7,20}$/, "Please enter a valid phone number."),
+  phone: phoneNumber,
   email: z.email("Please enter a valid email address. The signed form is sent here."),
 });
 

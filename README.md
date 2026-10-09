@@ -9,7 +9,9 @@ doctors, and remind patients and doctors before each appointment.
 This is the clinic's process for an IV drip (process flow V4), step by step.
 
 1. **Check-in.** Reception or the practitioner takes the client's first name,
-   surname, ID or passport number and treatment under **Check in**. The client
+   surname, ID or passport number, contact number, emergency contact and
+   treatment under **Check in**. These are filled in on the practitioner's
+   form so they aren't asked twice. The client
    joins the **Waiting** list on the Today and Treatments screens. A returning
    client is recognised from their ID number.
 2. **The practitioner starts the case** from the waiting list (or straight

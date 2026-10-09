@@ -147,7 +147,12 @@ export default async function CasePage({ params, searchParams }: { params: Promi
       {s === "QUEUED" && (
         <section className="card space-y-4" aria-labelledby="queue-heading">
           <h2 id="queue-heading" className="section-title">Waiting for a practitioner</h2>
-          <p>ID or passport number: <strong>{p.idNumber || "-"}</strong>{c.patientId ? " · returning patient" : " · new patient"}</p>
+          <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-3">
+            <div><dt className="hint">ID or passport number</dt><dd className="font-bold">{p.idNumber || "-"}</dd></div>
+            <div><dt className="hint">Contact number</dt><dd className="font-bold">{p.phone || "-"}</dd></div>
+            <div><dt className="hint">Emergency contact</dt><dd className="font-bold">{[c.consent.emergency.name, c.consent.emergency.phone].filter(Boolean).join(" · ") || "-"}</dd></div>
+          </dl>
+          <p className="muted">{c.patientId ? "Returning patient" : "New patient"}</p>
           <div className="flex flex-wrap gap-3">
             {clinical && <form action={startCaseAction}><input type="hidden" name="caseId" value={c.id} /><button className="btn btn-primary btn-lg" type="submit">Start this case</button></form>}
             <form action={cancelCaseAction}><input type="hidden" name="caseId" value={c.id} /><button className="btn btn-danger" type="submit">Remove from waiting list</button></form>
