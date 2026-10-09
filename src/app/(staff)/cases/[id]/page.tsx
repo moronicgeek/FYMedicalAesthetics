@@ -2,14 +2,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { CASE_STATUS_LABEL, getCase, OUTCOME_LABEL } from "@/lib/cases";
+import { CASE_STATUS_LABEL, getCase, getIdPhoto, isSigned, OUTCOME_LABEL } from "@/lib/cases";
 import { CONSENT_FORMS } from "@/lib/consent-forms";
+import { db } from "@/lib/db";
+import { decryptPatient } from "@/lib/patients";
 import { listDoctors } from "@/lib/queries";
+import { dateOfBirthFromSaId } from "@/lib/sa-id";
 import { getOnCallDoctorId, getVitalRanges } from "@/lib/settings";
 import { ageFrom, formatDateTime, formatTime } from "@/lib/time";
 import { checkVitals, formatVitals, VITAL_FIELDS, type Vitals } from "@/lib/vitals";
-import { manualDecisionAction, resendConsentAction, resendDoctorAction } from "@/app/actions/cases";
-import { startKioskAction } from "@/app/actions/kiosk";
+import { cancelCaseAction, handToPatientAction, manualDecisionAction, resendConsentAction, resendDoctorAction, startCaseAction } from "@/app/actions/cases";
+import { AssessmentForm } from "@/components/AssessmentForm";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { CloseCaseForm, PostVitalsForm, PreVitalsForm } from "@/components/CaseForms";
 
@@ -19,7 +22,7 @@ type Step = { label: string; state: "done" | "current" | "todo" | "stopped" };
 
 function Stepper({ steps }: { steps: Step[] }) {
   return (
-    <ol className="grid gap-2 sm:grid-cols-5" aria-label="Progress">
+    <ol className={`grid gap-2 sm:grid-cols-3 ${steps.length > 4 ? "lg:grid-cols-6" : "lg:grid-cols-4"}`} aria-label="Progress">
       {steps.map((s, i) => (
         <li
           key={s.label}
@@ -63,30 +66,52 @@ export default async function CasePage({ params, searchParams }: { params: Promi
   const form = CONSENT_FORMS[c.type];
   const p = c.consent.patient;
   const clinical = user.role !== "RECEPTION";
-  const [ranges, doctors, onCall] = await Promise.all([getVitalRanges(), listDoctors(), getOnCallDoctorId()]);
+  const [ranges, doctors, onCall, idPhoto] = await Promise.all([getVitalRanges(), listDoctors(), getOnCallDoctorId(), getIdPhoto(c.patientId)]);
   const yesAnswers = form.questions.filter((q) => c.consent.answers[q.id] === "yes");
+  const signed = isSigned(c.consent);
+  const assessed = Boolean(p.dateOfBirth);
 
   const iv = c.type === "IV_DRIP";
   const s = c.status;
+  const closedDone = s === "CLOSED" && c.outcome === "COMPLETED";
+  const detailsStep: Step = { label: iv ? "Details and vitals" : "Details and history", state: s === "QUEUED" || c.outcome === "CANCELLED" ? "todo" : s === "ASSESSMENT" || s === "CONSENTED" ? "current" : s === "REFERRED" || c.outcome === "REFERRED_VITALS" ? "stopped" : "done" };
+  const signStep: Step = { label: "Patient signs", state: signed ? "done" : s === "AWAITING_SIGNATURE" ? "current" : "todo" };
+  const closeStep: Step = { label: "Close case", state: s === "CLOSED" && c.outcome !== "CANCELLED" ? "done" : ["READY_TO_CLOSE", "REFERRED", "DECLINED"].includes(s) || (!iv && ["IN_PROGRESS", "CONSENTED"].includes(s)) ? "current" : "todo" };
   const steps: Step[] = iv
     ? [
-        { label: "Consent signed", state: "done" },
-        { label: "Vitals", state: s === "CONSENTED" ? "current" : s === "REFERRED" ? "stopped" : "done" },
-        { label: "Doctor approval", state: s === "AWAITING_DOCTOR" ? "current" : s === "DECLINED" ? "stopped" : ["IN_PROGRESS", "READY_TO_CLOSE"].includes(s) || (s === "CLOSED" && c.doctorDecision) ? "done" : s === "CLOSED" ? "stopped" : "todo" },
-        { label: "Drip and vitals after", state: s === "IN_PROGRESS" ? "current" : s === "READY_TO_CLOSE" || (s === "CLOSED" && c.outcome === "COMPLETED") ? "done" : "todo" },
-        { label: "Close case", state: s === "CLOSED" ? "done" : ["READY_TO_CLOSE", "REFERRED", "DECLINED"].includes(s) ? "current" : "todo" },
+        { label: "Checked in", state: "done" },
+        detailsStep,
+        { label: "Doctor approval", state: s === "AWAITING_DOCTOR" ? "current" : s === "DECLINED" || c.outcome === "DOCTOR_DECLINED" ? "stopped" : c.doctorDecision ? "done" : "todo" },
+        signStep,
+        { label: "Drip and vitals after", state: s === "IN_PROGRESS" ? "current" : s === "READY_TO_CLOSE" || closedDone ? "done" : "todo" },
+        closeStep,
       ]
-    : [
-        { label: "Consent signed", state: "done" },
-        { label: "Treatment", state: s === "CLOSED" ? "done" : "current" },
-        { label: "Close case", state: s === "CLOSED" ? "done" : "current" },
-      ];
+    : [{ label: "Checked in", state: "done" }, detailsStep, signStep, closeStep];
+
+  // What the practitioner starts from: the check-in details, the date of
+  // birth from a South African ID number, and a returning patient's record.
+  let initial: Record<string, string> = {};
+  if (s === "ASSESSMENT") {
+    const known = c.patientId ? await db.patient.findUnique({ where: { id: c.patientId } }) : null;
+    const prev = known ? decryptPatient(known) : undefined;
+    initial = {
+      firstName: p.firstName,
+      lastName: p.lastName,
+      idNumber: p.idNumber ?? "",
+      dateOfBirth: p.dateOfBirth || prev?.dateOfBirth || dateOfBirthFromSaId(p.idNumber) || "",
+      phone: p.phone || prev?.phone || "",
+      email: p.email || prev?.email || "",
+      emergencyName: c.consent.emergency.name || prev?.emergencyContact?.name || "",
+      emergencyPhone: c.consent.emergency.phone || prev?.emergencyContact?.phone || "",
+      medications: prev?.medical.medications ?? "",
+    };
+  }
 
   const preCheck = c.preVitals ? checkVitals(c.preVitals, ranges) : null;
 
   return (
     <div className="space-y-6">
-      {s === "AWAITING_DOCTOR" && <AutoRefresh seconds={5} />}
+      {(s === "AWAITING_DOCTOR" || s === "AWAITING_SIGNATURE") && <AutoRefresh seconds={5} />}
       {flags.closed && <div className="alert alert-success" role="status">Case closed and signed.</div>}
       {flags.emailed && <div className="alert alert-success" role="status">Consent form emailed to {p.email} and the clinic.</div>}
       {flags.emailfail && <div className="alert alert-error" role="alert">The consent email could not be sent. Check the email settings.</div>}
@@ -97,12 +122,13 @@ export default async function CasePage({ params, searchParams }: { params: Promi
         <div>
           <p className="muted"><Link href="/cases" className="underline">Treatments</Link> / #{c.code}</p>
           <h1 className="page-title">{p.firstName} {p.lastName}</h1>
-          <p className="muted">{form.shortName}{c.consent.treatment ? `: ${c.consent.treatment}` : ""} · {ageFrom(p.dateOfBirth)} years · started {formatDateTime(c.createdAt)}</p>
+          <p className="muted">{form.shortName}{c.consent.treatment ? `: ${c.consent.treatment}` : ""}{p.dateOfBirth ? ` · ${ageFrom(p.dateOfBirth)} years` : ""} · checked in {formatDateTime(c.createdAt)}</p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <Link href={`/patients/${c.patientId}`} className="btn btn-secondary">Patient record</Link>
-          <form action={startKioskAction}><button className="btn btn-secondary" type="submit">Hand device to next patient</button></form>
-        </div>
+        {c.patientId && (
+          <div className="flex flex-wrap gap-3">
+            <Link href={`/patients/${c.patientId}`} className="btn btn-secondary">Patient record</Link>
+          </div>
+        )}
       </div>
 
       <Stepper steps={steps} />
@@ -117,6 +143,43 @@ export default async function CasePage({ params, searchParams }: { params: Promi
       )}
 
       {!clinical && s !== "CLOSED" && <div className="alert alert-info">A practitioner or doctor needs to sign in to continue this case.</div>}
+
+      {s === "QUEUED" && (
+        <section className="card space-y-4" aria-labelledby="queue-heading">
+          <h2 id="queue-heading" className="section-title">Waiting for a practitioner</h2>
+          <p>ID or passport number: <strong>{p.idNumber || "-"}</strong>{c.patientId ? " · returning patient" : " · new patient"}</p>
+          <div className="flex flex-wrap gap-3">
+            {clinical && <form action={startCaseAction}><input type="hidden" name="caseId" value={c.id} /><button className="btn btn-primary btn-lg" type="submit">Start this case</button></form>}
+            <form action={cancelCaseAction}><input type="hidden" name="caseId" value={c.id} /><button className="btn btn-danger" type="submit">Remove from waiting list</button></form>
+          </div>
+        </section>
+      )}
+
+      {clinical && s === "ASSESSMENT" && (
+        <>
+          <AssessmentForm
+            caseId={c.id}
+            type={c.type}
+            initial={initial}
+            idPhotoOnFile={idPhoto}
+            ranges={ranges}
+            doctors={doctors.map((d) => ({ value: d.id, label: d.name }))}
+            defaultDoctorId={onCall ?? undefined}
+          />
+          <form action={cancelCaseAction}><input type="hidden" name="caseId" value={c.id} /><button className="text-danger underline" type="submit">Client has left: remove this case</button></form>
+        </>
+      )}
+
+      {s === "AWAITING_SIGNATURE" && (
+        <section className="card space-y-4" aria-labelledby="sign-heading">
+          <h2 id="sign-heading" className="section-title">Patient to read and sign</h2>
+          <p>
+            {iv ? "The doctor approved the drip. " : ""}Hand the tablet to {p.firstName} to read the conditions and sign.
+            {iv ? " Do not start the drip until they have signed." : ""} The tablet locks to the signing screen; sign in again to take it back.
+          </p>
+          {clinical && <form action={handToPatientAction}><input type="hidden" name="caseId" value={c.id} /><button className="btn btn-primary btn-lg" type="submit">Hand the tablet to the patient</button></form>}
+        </section>
+      )}
 
       {/* IV drip: step 1, vitals before */}
       {clinical && iv && s === "CONSENTED" && (
@@ -138,7 +201,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
       {s === "REFERRED" && preCheck && (
         <div className="alert alert-error" role="alert">
           <p className="text-xl font-bold">Do not administer the drip. Refer the patient to a doctor immediately.</p>
-          <p>These readings are outside the safe range. Nothing has been sent to the doctor.</p>
+          <p>These readings are outside the safe range. Nothing has been sent to the doctor, and the patient does not sign anything.</p>
           <ul className="mt-2 list-disc pl-6">
             {preCheck.outOfRange.map((o) => (
               <li key={o.key}>{o.label}: <strong>{o.value} {o.unit}</strong> (range {o.range.min}–{o.range.max})</li>
@@ -173,7 +236,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
             {c.doctor?.name ?? "The doctor"} said {c.doctorDecision ? "YES" : "NO"} at {formatTime(c.doctorDecisionAt)}
             {c.doctorDecisionVia ? ` (${c.doctorDecisionVia})` : ""}.
           </p>
-          {c.doctorDecision === false && <p>Do not administer the drip. Refer the patient to a doctor immediately.</p>}
+          {c.doctorDecision === false && <p>Do not administer the drip. Refer the patient to a doctor immediately. The patient does not sign anything.</p>}
           {c.doctorDecision && s === "IN_PROGRESS" && <p>You may proceed with the drip. When it is finished, measure and enter the vitals again.</p>}
         </div>
       )}
@@ -185,7 +248,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
         </section>
       )}
 
-      {clinical && (["READY_TO_CLOSE", "REFERRED", "DECLINED"].includes(s) || (!iv && s === "CONSENTED")) && (
+      {clinical && (["READY_TO_CLOSE", "REFERRED", "DECLINED"].includes(s) || (!iv && ["IN_PROGRESS", "CONSENTED"].includes(s))) && (
         <section className="card space-y-4" aria-labelledby="close-heading">
           <h2 id="close-heading" className="section-title">Close the case</h2>
           <CloseCaseForm caseId={c.id} officeUse={iv ? undefined : form.officeUse} />
@@ -195,7 +258,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
       {s === "CLOSED" && (
         <section className="card space-y-3" aria-labelledby="closed-heading">
           <h2 id="closed-heading" className="section-title">Closed</h2>
-          <p>Closed by {c.practitioner?.name ?? "practitioner"} on {c.closedAt ? formatDateTime(c.closedAt) : ""}.</p>
+          <p>{c.outcome === "CANCELLED" ? "Removed from the waiting list" : `Closed by ${c.practitioner?.name ?? "practitioner"}`} on {c.closedAt ? formatDateTime(c.closedAt) : ""}.</p>
           {Object.entries(c.officeUse).filter(([, v]) => v).length > 0 && (
             <dl className="grid gap-x-6 sm:grid-cols-3">
               {form.officeUse.map((f) => c.officeUse[f.id] && (
@@ -211,32 +274,44 @@ export default async function CasePage({ params, searchParams }: { params: Promi
         </section>
       )}
 
-      <details className="card">
-        <summary className="section-title cursor-pointer">Signed consent form</summary>
-        <div className="mt-4 space-y-3">
-          <p>
-            {form.title}, version {c.consent.formVersion}. Signed by <strong>{c.consent.signedName}</strong> on {formatDateTime(new Date(c.consent.signedAt))}.
-          </p>
-          <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
-            <div><dt className="hint">Mobile</dt><dd>{p.phone}</dd></div>
-            <div><dt className="hint">Email</dt><dd>{p.email}</dd></div>
-            <div><dt className="hint">ID number</dt><dd>{p.idNumber || "-"}</dd></div>
-            <div><dt className="hint">Emergency contact</dt><dd>{[c.consent.emergency.name, c.consent.emergency.phone].filter(Boolean).join(" · ") || "-"}</dd></div>
-          </dl>
-          <table className="table">
-            <tbody>
-              {form.questions.map((q) => (
-                <tr key={q.id}><td>{q.text}</td><td className={`font-bold ${c.consent.answers[q.id] === "yes" ? "text-danger" : ""}`}>{c.consent.answers[q.id] === "yes" ? "Yes" : "No"}</td></tr>
-              ))}
-            </tbody>
-          </table>
-          {form.detailFields.map((d) => <p key={d.id}><span className="font-bold">{d.label}:</span> {c.consent.details[d.id] || "-"}</p>)}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={c.consent.signature} alt={`Signature of ${c.consent.signedName}`} className="h-24 rounded-lg border border-line bg-white" />
-          <p className="muted">{c.consentEmailedAt ? `Emailed to the patient and clinic on ${formatDateTime(c.consentEmailedAt)}.` : "Not emailed yet."}</p>
-          <form action={resendConsentAction}><input type="hidden" name="caseId" value={c.id} /><button className="btn btn-secondary" type="submit">{c.consentEmailedAt ? "Email it again" : "Email the consent form"}</button></form>
-        </div>
-      </details>
+      {assessed && (
+        <details className="card">
+          <summary className="section-title cursor-pointer">{signed ? "Patient details and signed consent" : "Patient details and medical history"}</summary>
+          <div className="mt-4 space-y-3">
+            <p>
+              {form.title}, version {c.consent.formVersion}.{" "}
+              {signed ? <>Signed by <strong>{c.consent.signedName}</strong> on {formatDateTime(new Date(c.consent.signedAt!))}.</> : "Not signed by the patient."}
+            </p>
+            <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
+              <div><dt className="hint">Date of birth</dt><dd>{p.dateOfBirth}</dd></div>
+              <div><dt className="hint">ID number</dt><dd>{p.idNumber || "-"}</dd></div>
+              <div><dt className="hint">Mobile</dt><dd>{p.phone}</dd></div>
+              <div><dt className="hint">Email</dt><dd>{p.email}</dd></div>
+              <div><dt className="hint">Emergency contact</dt><dd>{[c.consent.emergency.name, c.consent.emergency.phone].filter(Boolean).join(" · ") || "-"}</dd></div>
+            </dl>
+            {idPhoto && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={idPhoto} alt="Photo of the patient's ID document" className="max-h-56 rounded-lg border border-line bg-white" />
+            )}
+            <table className="table">
+              <tbody>
+                {form.questions.map((q) => (
+                  <tr key={q.id}><td>{q.text}</td><td className={`font-bold ${c.consent.answers[q.id] === "yes" ? "text-danger" : ""}`}>{c.consent.answers[q.id] === "yes" ? "Yes" : c.consent.answers[q.id] === "no" ? "No" : "-"}</td></tr>
+                ))}
+              </tbody>
+            </table>
+            {form.detailFields.map((d) => <p key={d.id}><span className="font-bold">{d.label}:</span> {c.consent.details[d.id] || "-"}</p>)}
+            {signed && (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={c.consent.signature} alt={`Signature of ${c.consent.signedName}`} className="h-24 rounded-lg border border-line bg-white" />
+                <p className="muted">{c.consentEmailedAt ? `Emailed to the patient and clinic on ${formatDateTime(c.consentEmailedAt)}.` : "Not emailed yet."}</p>
+                <form action={resendConsentAction}><input type="hidden" name="caseId" value={c.id} /><button className="btn btn-secondary" type="submit">{c.consentEmailedAt ? "Email it again" : "Email the consent form"}</button></form>
+              </>
+            )}
+          </div>
+        </details>
+      )}
     </div>
   );
 }

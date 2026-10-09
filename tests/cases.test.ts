@@ -35,12 +35,18 @@ describe("vitals range check", () => {
     expect(checkVitals(ok, DEFAULT_RANGES).outOfRange).toHaveLength(0);
   });
 
-  it("requires the four core readings", () => {
-    expect(parseVitals({ systolic: "120" }).errors).toMatchObject({ diastolic: expect.any(String), heartRate: expect.any(String), glucose: expect.any(String) });
-    expect(parseVitals({ systolic: "120", diastolic: "80", heartRate: "70", glucose: "5,5" }).vitals).toEqual({ systolic: 120, diastolic: 80, heartRate: 70, glucose: 5.5 });
+  it("requires blood pressure, heart rate, blood sugar and temperature", () => {
+    expect(parseVitals({ systolic: "120" }).errors).toMatchObject({ diastolic: expect.any(String), heartRate: expect.any(String), glucose: expect.any(String), temperature: expect.any(String) });
+    expect(parseVitals({ systolic: "120", diastolic: "80", heartRate: "70", glucose: "5,5", temperature: "36,6" }).vitals).toEqual({ systolic: 120, diastolic: 80, heartRate: 70, glucose: 5.5, temperature: 36.6 });
+  });
+
+  it("keeps oxygen saturation optional", () => {
+    const core = { systolic: "120", diastolic: "80", heartRate: "70", glucose: "5.5", temperature: "36.6" };
+    expect(parseVitals(core).errors).toBeUndefined();
+    expect(parseVitals({ ...core, spo2: "97" }).vitals?.spo2).toBe(97);
   });
 
   it("rejects nonsense numbers", () => {
-    expect(parseVitals({ systolic: "abc", diastolic: "80", heartRate: "70", glucose: "5.5" }).errors?.systolic).toBeTruthy();
+    expect(parseVitals({ systolic: "abc", diastolic: "80", heartRate: "70", glucose: "5.5", temperature: "36.6" }).errors?.systolic).toBeTruthy();
   });
 });

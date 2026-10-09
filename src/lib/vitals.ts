@@ -14,8 +14,8 @@ export const VITAL_FIELDS: { key: VitalKey; label: string; unit: string; require
   { key: "diastolic", label: "Blood pressure: diastolic (bottom number)", unit: "mmHg", required: true, step: "1" },
   { key: "heartRate", label: "Heart rate", unit: "bpm", required: true, step: "1" },
   { key: "glucose", label: "Blood sugar", unit: "mmol/L", required: true, step: "0.1" },
+  { key: "temperature", label: "Temperature", unit: "°C", required: true, step: "0.1" },
   { key: "spo2", label: "Oxygen saturation (SpO2)", unit: "%", required: false, step: "1" },
-  { key: "temperature", label: "Temperature", unit: "°C", required: false, step: "0.1" },
 ];
 
 export const DEFAULT_RANGES: VitalRanges = {

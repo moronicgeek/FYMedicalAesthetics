@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
+import { getIdPhoto } from "@/lib/cases";
 import { getPatient } from "@/lib/patients";
 import { listAppointments } from "@/lib/queries";
 import { AppointmentList } from "@/components/AppointmentList";
@@ -30,9 +31,10 @@ export default async function PatientPage({ params, searchParams }: { params: Pr
   await audit(user, "view", "Patient", id);
 
   const now = new Date();
-  const [upcoming, past] = await Promise.all([
+  const [upcoming, past, idPhoto] = await Promise.all([
     listAppointments(user, { patientId: id, startsAt: { gte: new Date(now.getTime() - 12 * 3_600_000) } }),
     listAppointments(user, { patientId: id, startsAt: { lt: new Date(now.getTime() - 12 * 3_600_000) } }, "desc"),
+    getIdPhoto(id),
   ]);
   const m = patient.medical;
   const hasAlerts = [m.allergies, m.conditions].some((v) => v && !/^none$/i.test(v.trim())) || m.pregnantOrBreastfeeding === "yes";
@@ -111,6 +113,14 @@ export default async function PatientPage({ params, searchParams }: { params: Pr
         <h2 id="past-heading" className="section-title mb-2">Past appointments</h2>
         <AppointmentList items={past} showDate showPatient={false} emptyText="No past appointments." />
       </section>
+
+      {idPhoto && (
+        <section className="card" aria-labelledby="id-heading">
+          <h2 id="id-heading" className="section-title mb-2">ID document</h2>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={idPhoto} alt={`Photo of ${patient.firstName} ${patient.lastName}'s ID document`} className="max-h-72 rounded-lg border border-line bg-white" />
+        </section>
+      )}
 
       <section className="card" aria-labelledby="consent-heading">
         <h2 id="consent-heading" className="section-title mb-2">Consent</h2>

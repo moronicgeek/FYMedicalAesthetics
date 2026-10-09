@@ -7,7 +7,7 @@ import { FormErrors, SelectField, TextField } from "./fields";
 import { SignaturePad } from "./SignaturePad";
 import { SubmitButton } from "./SubmitButton";
 
-function VitalInputs({ ranges, values, errors }: { ranges: VitalRanges; values: Record<string, string>; errors: Record<string, string> }) {
+export function VitalInputs({ ranges, values, errors }: { ranges: VitalRanges; values: Record<string, string>; errors: Record<string, string> }) {
   return (
     <div className="grid gap-5 sm:grid-cols-2">
       {VITAL_FIELDS.map((f) => (
