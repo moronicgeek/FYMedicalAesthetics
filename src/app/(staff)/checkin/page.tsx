@@ -9,7 +9,7 @@ export default async function CheckInPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
         <h1 className="page-title">Check in a client</h1>
-        <p className="muted">Only the basics are needed now. The practitioner takes the rest of the details with the client.</p>
+        <p className="muted">The practitioner takes the email address, medical history and vitals with the client.</p>
       </div>
       <div className="card">
         <CheckInForm canStart={user.role !== "RECEPTION"} />

@@ -108,9 +108,18 @@ export async function createCaseFromConsent(consent: ConsentRecord) {
   });
 }
 
-export type CheckIn = { type: CaseType; firstName: string; lastName: string; idNumber: string };
+export type CheckIn = {
+  type: CaseType;
+  firstName: string;
+  lastName: string;
+  idNumber: string;
+  phone: string;
+  emergencyName?: string;
+  emergencyPhone?: string;
+};
 
-// The client gives only their names, ID number and treatment; the visit then
+// The client gives their names, ID number, contact number, emergency contact
+// and treatment at the desk; the visit then
 // waits for a practitioner. A returning patient is linked straight away so
 // their details can be filled in for the practitioner.
 export async function checkInCase(input: CheckIn, startedBy?: Pick<User, "id">) {
@@ -118,10 +127,10 @@ export async function checkInCase(input: CheckIn, startedBy?: Pick<User, "id">) 
   const record: CaseRecord = {
     formType: input.type,
     formVersion: CONSENT_FORMS[input.type].version,
-    patient: { firstName: input.firstName, lastName: input.lastName, idNumber: input.idNumber, dateOfBirth: "", phone: "", email: "" },
+    patient: { firstName: input.firstName, lastName: input.lastName, idNumber: input.idNumber, dateOfBirth: "", phone: input.phone, email: "" },
     answers: {},
     details: {},
-    emergency: {},
+    emergency: { name: input.emergencyName, phone: input.emergencyPhone },
   };
   return db.treatmentCase.create({
     data: {
