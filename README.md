@@ -112,7 +112,8 @@ the Ireland region (`eu-west-1`) for everything. Amplify isn't offered in Cape
 Town, and the server and database must sit in the same region or every page
 is slow. POPIA (section 72) allows patient data to be kept in the EU because
 GDPR gives equivalent protection; the clinic's privacy notice and consent forms
-should say records are stored with AWS in Ireland.
+should say records are stored with AWS in Ireland. The reasoning and the
+expected monthly costs are in [docs/hosting-and-costs.md](docs/hosting-and-costs.md).
 
 1. **Database.** Create an Amazon RDS for PostgreSQL instance in `eu-west-1`
    with encryption at rest and `rds.force_ssl` on. Amplify's servers can't join
