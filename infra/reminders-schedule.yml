@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  FY Medical Aesthetics daily reminders. An EventBridge schedule calls
+  /api/cron/reminders on the app with "Authorization: Bearer <CRON_SECRET>".
+  Deploy in the same region as the app (e.g. af-south-1, Cape Town).
+
+Parameters:
+  AppUrl:
+    Type: String
+    Description: The app's public URL, the same as APP_URL (e.g. https://portal.fymedical.co.za)
+    AllowedPattern: "^https://[^/]+$"
+  CronSecret:
+    Type: String
+    NoEcho: true
+    MinLength: 32
+    Description: The same value as the app's CRON_SECRET
+  Schedule:
+    Type: String
+    Default: cron(0 4 * * ? *)
+    Description: When to send reminders, in UTC. The default is 04:00 UTC, which is 06:00 in Johannesburg.
+
+Resources:
+  # EventBridge keeps the secret in Secrets Manager and sends it as a header.
+  CronConnection:
+    Type: AWS::Events::Connection
+    Properties:
+      Description: FY Medical cron secret
+      AuthorizationType: API_KEY
+      AuthParameters:
+        ApiKeyAuthParameters:
+          ApiKeyName: Authorization
+          ApiKeyValue: !Sub "Bearer ${CronSecret}"
+
+  RemindersDestination:
+    Type: AWS::Events::ApiDestination
+    Properties:
+      ConnectionArn: !GetAtt CronConnection.Arn
+      HttpMethod: POST
+      InvocationEndpoint: !Sub "${AppUrl}/api/cron/reminders"
+      InvocationRateLimitPerSecond: 1
+
+  InvokeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: events.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: invoke-reminders
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: events:InvokeApiDestination
+                Resource: !GetAtt RemindersDestination.Arn
+
+  RemindersRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Send appointment reminders and clean up expired sessions
+      ScheduleExpression: !Ref Schedule
+      State: ENABLED
+      Targets:
+        - Id: reminders
+          Arn: !GetAtt RemindersDestination.Arn
+          RoleArn: !GetAtt InvokeRole.Arn
+          RetryPolicy:
+            MaximumRetryAttempts: 3
+            MaximumEventAgeInSeconds: 3600

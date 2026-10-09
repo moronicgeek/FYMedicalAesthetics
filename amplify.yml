@@ -1,0 +1,22 @@
+# AWS Amplify Hosting build settings.
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        # Amplify only gives environment variables to the build, not to the
+        # running server, so copy the app's settings into .env.production.
+        - env | grep -E '^(DATABASE_URL|DIRECT_URL|ENCRYPTION_KEY|BLIND_INDEX_KEY|CLINIC_|DEFAULT_COUNTRY_CODE|CRON_SECRET|REMINDER_HOURS_AHEAD|RESEND_API_KEY|EMAIL_FROM|TWILIO_|APP_URL|CLINIC_INBOX_EMAIL)=' >> .env.production
+        - npm run db:migrate
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
