@@ -318,7 +318,10 @@ export default async function CasePage({ params, searchParams }: { params: Promi
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={c.consent.signature} alt={`Signature of ${c.consent.signedName}`} className="h-24 rounded-lg border border-line bg-white" />
                 <p className="muted">{c.consentEmailedAt ? `Emailed to the patient and clinic on ${formatDateTime(c.consentEmailedAt)}.` : "Not emailed yet."}</p>
-                <form action={resendConsentAction}><input type="hidden" name="caseId" value={c.id} /><button className="btn btn-secondary" type="submit">{c.consentEmailedAt ? "Email it again" : "Email the consent form"}</button></form>
+                <div className="flex flex-wrap gap-3">
+                  <form action={resendConsentAction}><input type="hidden" name="caseId" value={c.id} /><button className="btn btn-secondary" type="submit">{c.consentEmailedAt ? "Email it again" : "Email the consent form"}</button></form>
+                  {user.role === "ADMIN" && <a className="btn btn-secondary" href={`/cases/${c.id}/consent.pdf`} download>Download PDF</a>}
+                </div>
               </>
             )}
           </div>

@@ -81,6 +81,12 @@ The original self-service check-in, where the patient fills in and signs the
 whole form on the tablet first, is still in the app under `/kiosk` but no
 longer linked from the staff screens.
 
+### Past consent forms
+
+Administrators can download any signed consent form as a PDF: from the
+**Signed consent forms** list on a patient's record, or with **Download PDF**
+on the visit itself. Each download is recorded in the access log.
+
 ## Appointments
 
 1. **Reception books an appointment** with a doctor. Double-booking a doctor is
