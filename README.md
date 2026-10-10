@@ -8,10 +8,13 @@ doctors, and remind patients and doctors before each appointment.
 
 This is the clinic's process for an IV drip (process flow V4), step by step.
 
-1. **Check-in.** Reception or the practitioner takes the client's first name,
-   surname, ID or passport number, contact number, emergency contact and
-   treatment under **Check in**. These are filled in on the practitioner's
-   form so they aren't asked twice. The client
+1. **Check-in.** Under **Check in**, reception taps **Hand tablet to client**
+   and the client enters their own first name, surname, ID or passport number,
+   contact number, emergency contact and treatment on the locked tablet. An IV
+   drip client is then checked in straight away, with no consent form at this
+   point, and hands the tablet back (or taps **Next client**). Staff can also
+   type these details in themselves on the same page. They are filled in on
+   the practitioner's form so they aren't asked twice. The client
    joins the **Waiting** list on the Today and Treatments screens. A returning
    client is recognised from their ID number.
 2. **The practitioner starts the case** from the waiting list (or straight
@@ -52,9 +55,11 @@ waiting list.
 Botox, filler, peel, microneedling and laser treatments are done by a doctor,
 and the client fills in their own form:
 
-1. Reception checks the client in as above.
-2. Staff tap **Hand tablet to client**. The tablet locks to the client's form,
-   with their check-in details already filled in. The client adds the rest of
+1. The client checks in on the tablet as above.
+2. After choosing an injection or laser treatment, the client goes straight on
+   to their consent form, with their check-in details already filled in. (If
+   staff checked them in at the desk instead, they tap **Hand tablet to
+   client** on the waiting list.) The client adds the rest of
    their details, answers the yes/no medical questions, reads the conditions
    and signs. The signed form is emailed as for IV drips.
 3. The case moves to **Waiting for the doctor**. The doctor opens it, reviews

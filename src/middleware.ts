@@ -19,7 +19,7 @@ export function middleware(req: NextRequest) {
   // A device in patient check-in mode can only show the check-in screens
   // until a staff member exits with their password.
   if (req.cookies.has(KIOSK_COOKIE) && !pathname.startsWith("/kiosk") && !pathname.startsWith("/d/") && pathname !== "/login" && req.method === "GET") {
-    return redirectTo(req, "/kiosk");
+    return redirectTo(req, "/kiosk/checkin");
   }
   return NextResponse.next();
 }

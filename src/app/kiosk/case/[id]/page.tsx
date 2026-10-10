@@ -26,6 +26,7 @@ export default async function KioskCase({ params, searchParams }: { params: Prom
       <div className="flex flex-wrap justify-center gap-3">
         <Link className="btn btn-primary btn-lg" href={`/kiosk/exit?next=/cases/${c.id}`}>Staff: continue</Link>
         {!handedOver && <Link className="btn btn-secondary btn-lg" href="/kiosk">Next patient</Link>}
+        {handedOver && c.type !== "IV_DRIP" && <Link className="btn btn-secondary btn-lg" href="/kiosk/checkin">Next client</Link>}
       </div>
     </div>
   );
