@@ -31,6 +31,7 @@ import {
 } from "@/lib/cases";
 import type { ConsentFormDef } from "@/lib/consent-forms";
 import { KIOSK_COOKIE } from "@/lib/kiosk";
+import { getIvDrips } from "@/lib/settings";
 import { validIdPhoto, validSignature } from "@/lib/signature";
 import { formToObject, type FieldErrors } from "@/lib/validation";
 import { parseVitals } from "@/lib/vitals";
@@ -61,6 +62,14 @@ function parseTreatment(def: ConsentFormDef, values: Record<string, string>, err
   const treatment = [...chosen, values.treatmentOther?.trim()].filter(Boolean).join(", ");
   if (def.treatmentChoice && !treatment && def.type !== "LASER") errors.treatment = `Please fill in: ${def.treatmentChoice.label.toLowerCase()}.`;
   return treatment || (def.type === "LASER" ? "Laser" : undefined);
+}
+
+// IV drips are chosen from the list an administrator keeps in Settings.
+async function parseDrip(values: Record<string, string>, errors: FieldErrors) {
+  const drip = values.treatmentOther?.trim();
+  if (!drip) errors.treatment = "Please choose the drip from the list.";
+  else if (!(await getIvDrips()).includes(drip)) errors.treatment = `${drip} is not on the drip list. Please choose one from the list.`;
+  return drip;
 }
 
 const patientDetails = z.object({
@@ -331,11 +340,11 @@ export async function assessmentAction(_prev: StepState, form: FormData): Promis
   const parsed = assessmentDetails.safeParse(values);
   if (!parsed.success) for (const i of parsed.error.issues) errors[String(i.path[0])] ??= i.message;
   const answers = parseHistory(def, values, errors);
-  const treatment = parseTreatment(def, values, errors);
+  const iv = c.type === "IV_DRIP";
+  const treatment = iv ? await parseDrip(values, errors) : parseTreatment(def, values, errors);
   const idPhoto = values.idPhoto || undefined;
   if (idPhoto && !validIdPhoto(idPhoto)) errors.idPhoto = "The ID photo couldn't be read. Please take it again.";
 
-  const iv = c.type === "IV_DRIP";
   const vitalsResult = iv ? parseVitals(values) : {};
   if (vitalsResult.errors) Object.assign(errors, vitalsResult.errors);
   const doctor = iv ? await db.user.findFirst({ where: { id: values.doctorId, role: "DOCTOR", active: true } }) : null;

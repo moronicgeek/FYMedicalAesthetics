@@ -7,6 +7,7 @@ import type { VitalRanges } from "@/lib/vitals";
 import { VitalInputs } from "./CaseForms";
 import { FormErrors, SelectField, TextArea, TextField } from "./fields";
 import { IdPhotoField } from "./IdPhotoField";
+import { SearchableSelect } from "./SearchableSelect";
 import { SubmitButton } from "./SubmitButton";
 import { TreatmentChoice } from "./TreatmentChoice";
 
@@ -20,6 +21,7 @@ export function AssessmentForm({
   ranges,
   doctors,
   defaultDoctorId,
+  drips = [],
 }: {
   caseId: string;
   type: CaseType;
@@ -28,6 +30,7 @@ export function AssessmentForm({
   ranges: VitalRanges;
   doctors: { value: string; label: string }[];
   defaultDoctorId?: string;
+  drips?: string[];
 }) {
   const def = CONSENT_FORMS[type];
   const [state, action] = useActionState<StepState, FormData>(assessmentAction, {});
@@ -54,7 +57,11 @@ export function AssessmentForm({
           <TextField name="emergencyPhone" label="Emergency contact number" type="tel" inputMode="tel" defaultValue={v.emergencyPhone} />
         </div>
         <IdPhotoField name="idPhoto" onFile={idPhotoOnFile} error={e.idPhoto} />
-        {def.treatmentChoice && <TreatmentChoice choice={def.treatmentChoice} values={v} error={e.treatment} />}
+        {iv && def.treatmentChoice ? (
+          <SearchableSelect name="treatmentOther" label={def.treatmentChoice.label} options={drips} defaultValue={v.treatmentOther} error={e.treatment} />
+        ) : (
+          def.treatmentChoice && <TreatmentChoice choice={def.treatmentChoice} values={v} error={e.treatment} />
+        )}
       </section>
 
       <section className="card space-y-2" aria-labelledby="history-heading">
