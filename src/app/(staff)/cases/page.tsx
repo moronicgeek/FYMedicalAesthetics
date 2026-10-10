@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { CASE_STATUS_LABEL, decryptCase, OPEN_STATUSES, OUTCOME_LABEL } from "@/lib/cases";
+import { caseStatusLabel, decryptCase, OPEN_STATUSES, OUTCOME_LABEL } from "@/lib/cases";
 import { CONSENT_FORMS } from "@/lib/consent-forms";
 import { clinicDateString, clinicDayRange, formatTime } from "@/lib/time";
 import { AutoRefresh } from "@/components/AutoRefresh";
-import { WaitingList } from "@/components/WaitingList";
+import { DoctorQueue, WaitingList, waitingForDoctor } from "@/components/WaitingList";
 
 export const metadata = { title: "Treatments" };
 
@@ -19,7 +19,8 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
   });
   const cases = rows.map(decryptCase);
   const waiting = cases.filter((c) => c.status === "QUEUED");
-  const open = cases.filter((c) => c.status !== "CLOSED" && c.status !== "QUEUED");
+  const doctorCases = cases.filter(waitingForDoctor);
+  const open = cases.filter((c) => c.status !== "CLOSED" && c.status !== "QUEUED" && !waitingForDoctor(c));
   const closed = cases.filter((c) => c.status === "CLOSED");
   const urgent = new Set(["REFERRED", "DECLINED"]);
 
@@ -32,7 +33,8 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
         <p className="muted">Today&rsquo;s clients from check-in to closing. This list updates by itself.</p>
       </div>
 
-      <WaitingList cases={waiting} canStart={user.role !== "RECEPTION"} />
+      <WaitingList cases={waiting} role={user.role} />
+      <DoctorQueue cases={doctorCases} />
 
       <section className="card" aria-labelledby="open-heading">
         <h2 id="open-heading" className="section-title mb-2">In progress ({open.length})</h2>
@@ -44,7 +46,7 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
                   <Link href={`/cases/${c.id}`} className="text-lg font-bold text-brand-dark underline underline-offset-4">{c.consent.patient.firstName} {c.consent.patient.lastName}</Link>
                   <p className="muted">{CONSENT_FORMS[c.type].shortName} · #{c.code} · checked in {formatTime(c.createdAt)}</p>
                 </div>
-                <span className={`badge ${urgent.has(c.status) ? "bg-danger-soft text-danger" : ["AWAITING_DOCTOR", "AWAITING_SIGNATURE"].includes(c.status) ? "badge-CHECKED_IN" : "badge-BOOKED"}`}>{CASE_STATUS_LABEL[c.status]}</span>
+                <span className={`badge ${urgent.has(c.status) ? "bg-danger-soft text-danger" : ["AWAITING_DOCTOR", "AWAITING_SIGNATURE"].includes(c.status) ? "badge-CHECKED_IN" : "badge-BOOKED"}`}>{caseStatusLabel(c)}</span>
               </li>
             ))}
           </ul>

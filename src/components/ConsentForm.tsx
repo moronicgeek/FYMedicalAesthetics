@@ -7,10 +7,12 @@ import { Checkbox, FormErrors, TextArea, TextField } from "./fields";
 import { SignaturePad } from "./SignaturePad";
 import { SubmitButton } from "./SubmitButton";
 
-export function ConsentForm({ type, kiosk }: { type: CaseType; kiosk: boolean }) {
+// The whole consent form, filled in and signed by the client. With a caseId it
+// completes a case reception has already checked in, starting from `initial`.
+export function ConsentForm({ type, kiosk, caseId, initial = {} }: { type: CaseType; kiosk: boolean; caseId?: string; initial?: Record<string, string> }) {
   const def = CONSENT_FORMS[type];
   const [state, action] = useActionState<ConsentFormState, FormData>(submitConsentAction, {});
-  const v = state.values ?? {};
+  const v = state.values ?? initial;
   const e = state.errors ?? {};
   const today = new Date().toISOString().slice(0, 10);
 
@@ -18,6 +20,7 @@ export function ConsentForm({ type, kiosk }: { type: CaseType; kiosk: boolean })
     <form action={action} className="space-y-8" noValidate>
       <input type="hidden" name="formType" value={type} />
       {kiosk && <input type="hidden" name="mode" value="kiosk" />}
+      {caseId && <input type="hidden" name="caseId" value={caseId} />}
 
       <header className="space-y-1">
         <p className="muted text-sm">FY Medical Aesthetics · {CLINIC_LINE}</p>

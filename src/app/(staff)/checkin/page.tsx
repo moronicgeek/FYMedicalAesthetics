@@ -12,7 +12,7 @@ export default async function CheckInPage() {
         <p className="muted">The practitioner takes the email address, medical history and vitals with the client.</p>
       </div>
       <div className="card">
-        <CheckInForm canStart={user.role !== "RECEPTION"} />
+        <CheckInForm canStartIv={user.role !== "RECEPTION"} />
       </div>
     </div>
   );

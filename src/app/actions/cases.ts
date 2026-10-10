@@ -10,7 +10,9 @@ import { CONSENT_FORMS, isCaseType } from "@/lib/consent-forms";
 import { cookies } from "next/headers";
 import {
   cancelCase,
+  canTreat,
   checkInCase,
+  completeClientForm,
   closeCase,
   createCaseFromConsent,
   emailConsent,
@@ -111,6 +113,14 @@ export async function submitConsentAction(_prev: ConsentFormState, form: FormDat
     signedAt: new Date().toISOString(),
   };
 
+  // Injections and laser: completing the form the client was handed after
+  // check-in. Otherwise the self-service kiosk, which starts a new case.
+  if (values.caseId) {
+    if (!(await completeClientForm(values.caseId, consent))) return { errors: { form: "This form has already been completed." }, values };
+    await audit(user, "consent-signed", "TreatmentCase", values.caseId);
+    await emailConsent(values.caseId).catch(() => undefined);
+    redirect(`/kiosk/case/${values.caseId}?signed=1`);
+  }
   const created = await createCaseFromConsent(consent);
   await audit(user, "consent-signed", "TreatmentCase", created.id);
   // Saved first; the email is best-effort and can be resent from the case.
@@ -183,6 +193,7 @@ export async function closeCaseAction(_prev: StepState, form: FormData): Promise
   const user = await requireUser(["ADMIN", "DOCTOR", "PRACTITIONER"]);
   const values = formToObject(form);
   const c = await loadOpenCase(values.caseId);
+  if (!canTreat(user.role, c.type)) return { errors: { form: "Only a doctor can close an injection or laser case." }, values };
   const notes = values.notes?.trim();
   const errors: FieldErrors = {};
   if (notes && notes.length > 200) errors.notes = "Please keep notes to 200 characters.";
@@ -225,15 +236,40 @@ export async function checkInAction(_prev: ConsentFormState, form: FormData): Pr
   if (!values.formType || !isCaseType(values.formType)) errors.formType = "Please choose the treatment.";
   if (Object.keys(errors).length || !parsed.success) return { errors, values };
 
-  const startNow = values.intent === "start" && user.role !== "RECEPTION";
-  const created = await checkInCase({ type: values.formType as keyof typeof CONSENT_FORMS, ...parsed.data }, startNow ? user : undefined);
-  await audit(user, startNow ? "case-started" : "checked-in", "TreatmentCase", created.id);
-  redirect(startNow ? `/cases/${created.id}` : `/cases?checkedin=1`);
+  const type = values.formType as keyof typeof CONSENT_FORMS;
+  const startNow = values.intent === "start";
+  const iv = type === "IV_DRIP";
+  if (startNow && iv && !canTreat(user.role, type)) return { errors: { form: "Only a practitioner or doctor can start an IV drip. Add the client to the waiting list instead." }, values };
+  const created = await checkInCase({ type, ...parsed.data }, startNow && iv ? user : undefined);
+  await audit(user, startNow && iv ? "case-started" : "checked-in", "TreatmentCase", created.id);
+  if (!startNow) redirect(`/cases?checkedin=1`);
+  if (iv) redirect(`/cases/${created.id}`);
+  await lockTablet();
+  await audit(user, "handed-to-patient", "TreatmentCase", created.id);
+  redirect(`/kiosk/form/${created.id}`);
+}
+
+async function lockTablet() {
+  (await cookies()).set(KIOSK_COOKIE, "1", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
+}
+
+// Injections and laser: the client fills in their own details, medical history
+// and signature on the tablet, which locks to their form.
+export async function handToClientAction(form: FormData) {
+  const user = await requireUser();
+  const id = String(form.get("caseId"));
+  const c = await loadOpenCase(id);
+  if (c.status !== "QUEUED" || c.type === "IV_DRIP") redirect(`/cases/${id}`);
+  await lockTablet();
+  await audit(user, "handed-to-patient", "TreatmentCase", id);
+  redirect(`/kiosk/form/${id}`);
 }
 
 export async function startCaseAction(form: FormData) {
   const user = await requireUser(["ADMIN", "DOCTOR", "PRACTITIONER"]);
   const id = String(form.get("caseId"));
+  const c = await loadOpenCase(id);
+  if (!canTreat(user.role, c.type) || c.type !== "IV_DRIP") redirect(`/cases/${id}`);
   await startCase(id, user.id);
   await audit(user, "case-started", "TreatmentCase", id);
   redirect(`/cases/${id}`);
@@ -260,6 +296,7 @@ export async function assessmentAction(_prev: StepState, form: FormData): Promis
   const values = formToObject(form);
   const c = await loadOpenCase(values.caseId);
   if (c.status !== "ASSESSMENT") return { errors: { form: "This step has already been done." }, values };
+  if (!canTreat(user.role, c.type)) return { errors: { form: "Only a doctor can take on this treatment." }, values };
   const def = CONSENT_FORMS[c.type];
   const errors: FieldErrors = {};
 
@@ -316,7 +353,7 @@ export async function handToPatientAction(form: FormData) {
   const id = String(form.get("caseId"));
   const c = await loadOpenCase(id);
   if (c.status !== "AWAITING_SIGNATURE") redirect(`/cases/${id}`);
-  (await cookies()).set(KIOSK_COOKIE, "1", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
+  await lockTablet();
   await audit(user, "handed-to-patient", "TreatmentCase", id);
   redirect(`/kiosk/sign/${id}`);
 }
