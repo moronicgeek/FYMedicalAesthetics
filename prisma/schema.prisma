@@ -172,6 +172,11 @@ model TreatmentCase {
   // Encrypted JSON: patient details, form version, answers and, once signed,
   // the signature image.
   consent               String
+  // Encrypted copy of just the treatment (e.g. which IV drip), so the admin
+  // overview can count treatments without decrypting whole signed forms.
+  // Empty string encrypted when none was chosen; null on older rows until the
+  // overview fills it in.
+  treatment             String?
   consentEmailedAt      DateTime?
   practitionerId        String?
   practitioner          User?        @relation("CasePractitioner", fields: [practitionerId], references: [id])

@@ -17,6 +17,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
     { href: "/appointments", label: "Appointments" },
     ...(user.role === "ADMIN"
       ? [
+          { href: "/overview", label: "Overview" },
           { href: "/staff", label: "Staff" },
           { href: "/settings", label: "Settings" },
           { href: "/audit", label: "Access log" },
