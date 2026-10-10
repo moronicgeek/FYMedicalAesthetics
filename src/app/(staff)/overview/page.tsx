@@ -33,7 +33,7 @@ export default async function OverviewPage({ searchParams }: { searchParams: Pro
   if (filters.drip && filters.type && filters.type !== "IV_DRIP") filters.drip = undefined;
   const [data, configuredDrips] = await Promise.all([businessOverview(period, filters), getIvDrips()]);
 
-  const drips = [...new Set([...configuredDrips, ...data.drips])].sort((a, b) => a.localeCompare(b));
+  const drips = [...new Set([...configuredDrips.map((d) => d.name), ...data.drips])].sort((a, b) => a.localeCompare(b));
   const filtered = Boolean(filters.type || filters.drip || filters.staff || filters.outcome);
   const href = (changes: Partial<Search>) => {
     const params = new URLSearchParams();
