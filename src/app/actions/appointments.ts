@@ -6,9 +6,10 @@ import type { AppointmentStatus } from "@prisma/client";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { db } from "@/lib/db";
+import { decrypt } from "@/lib/crypto";
 import { encryptAppointmentFields, sendBookingConfirmation } from "@/lib/appointments";
 import { zonedToUtc } from "@/lib/time";
-import { appointmentSchema, fieldErrors, formToObject, type FieldErrors } from "@/lib/validation";
+import { appointmentSchema, canSeeService, fieldErrors, formToObject, type FieldErrors } from "@/lib/validation";
 
 export type AppointmentFormState = { errors?: FieldErrors; values?: Record<string, string> };
 
@@ -30,6 +31,7 @@ export async function bookAppointmentAction(_prev: AppointmentFormState, form: F
     db.user.findFirst({ where: { id: input.doctorId, role: "DOCTOR", active: true } }),
   ]);
   if (!patient) return { errors: { patientId: "Please choose a patient." }, values };
+  if (!canSeeService(user.role, input.service)) return { errors: { service: "Only reception or a doctor can book this treatment." }, values };
   if (!doctor) return { errors: { doctorId: "Please choose a doctor." }, values };
 
   // Reject double-booking the doctor. Overlap: existing.start < new.end and existing.end > new.start.
@@ -70,8 +72,8 @@ export async function setAppointmentStatusAction(form: FormData) {
   const id = String(form.get("id"));
   const status = String(form.get("status")) as AppointmentStatus;
   if (!ALLOWED.includes(status)) return;
-  const appt = await db.appointment.findUnique({ where: { id }, select: { doctorId: true } });
-  if (!appt) return;
+  const appt = await db.appointment.findUnique({ where: { id }, select: { doctorId: true, service: true } });
+  if (!appt || !canSeeService(user.role, decrypt(appt.service))) return;
   if (user.role === "DOCTOR" && appt.doctorId !== user.id) return;
   await db.appointment.update({ where: { id }, data: { status } });
   await audit(user, `status:${status}`, "Appointment", id);

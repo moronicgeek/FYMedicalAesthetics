@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { canTreat, caseStatusLabel, getCase, getIdPhoto, isSigned, OUTCOME_LABEL } from "@/lib/cases";
+import { canSeeCase, canTreat, caseStatusLabel, getCase, getIdPhoto, isSigned, OUTCOME_LABEL } from "@/lib/cases";
 import { CONSENT_FORMS } from "@/lib/consent-forms";
 import { db } from "@/lib/db";
 import { decryptPatient } from "@/lib/patients";
@@ -60,7 +60,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
   const { id } = await params;
   const flags = await searchParams;
   const c = await getCase(id);
-  if (!c) notFound();
+  if (!c || !canSeeCase(user.role, c.type)) notFound();
   await audit(user, "view", "TreatmentCase", id);
 
   const form = CONSENT_FORMS[c.type];

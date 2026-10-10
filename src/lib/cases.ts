@@ -1,6 +1,6 @@
 import "server-only";
 import { randomInt } from "node:crypto";
-import type { CaseOutcome, CaseStatus, TreatmentCase, User } from "@prisma/client";
+import type { CaseOutcome, CaseStatus, Prisma, TreatmentCase, User } from "@prisma/client";
 import { db } from "./db";
 import { decryptJson, encryptJson, decrypt, encrypt, normalisePhone, randomToken, sha256 } from "./crypto";
 import { CONSENT_FORMS, type CaseType } from "./consent-forms";
@@ -123,6 +123,16 @@ export async function completeClientForm(caseId: string, consent: ConsentRecord)
 }
 
 // Injections and laser are done by a doctor; practitioners only do IV drips.
+// Injections and laser are doctor-only, so practitioners don't see those cases
+// at all. Everyone else sees every case.
+export function canSeeCase(role: SessionUser["role"], type: CaseType) {
+  return role !== "PRACTITIONER" || type === "IV_DRIP";
+}
+
+export function visibleCasesWhere(role: SessionUser["role"]): Prisma.TreatmentCaseWhereInput {
+  return role === "PRACTITIONER" ? { type: "IV_DRIP" } : {};
+}
+
 export function canTreat(role: SessionUser["role"], type: CaseType) {
   if (role === "RECEPTION") return false;
   return type === "IV_DRIP" || role !== "PRACTITIONER";

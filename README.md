@@ -61,8 +61,12 @@ and the client fills in their own form:
    the answers, does the treatment and closes the case with the product or
    batch, notes and their signature.
 
-Practitioners cannot start or close injection and laser cases; only doctors
-and administrators can.
+Practitioners don't see injection and laser visits at all: they are left out
+of Today, Treatments and the case pages, and practitioners can only check in IV
+drip clients. Bookings for anti-wrinkle injections, dermal fillers, skin
+rejuvenation, chemical peels and laser are hidden from practitioners the same
+way, and they can't book them. Consultations, follow-ups and "other" bookings
+stay visible to everyone.
 
 The ranges that decide step 3, and the default on-call doctor, are under
 **Settings** (administrators only). The defaults are a starting point: the
