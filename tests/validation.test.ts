@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { patientSchema } from "../src/lib/validation";
+import { canSeeService, patientSchema, servicesFor } from "../src/lib/validation";
 
 const valid = {
   firstName: "Amina",
@@ -31,5 +31,16 @@ describe("patient intake validation", () => {
   it("treats blank optional fields as missing", () => {
     const r = patientSchema.safeParse({ ...valid, email: "", preferredName: "" });
     expect(r.success && r.data.email).toBe(undefined);
+  });
+});
+
+describe("doctor-only bookings", () => {
+  it("hides injections, peels and laser from practitioners only", () => {
+    expect(canSeeService("PRACTITIONER", "Laser treatment")).toBe(false);
+    expect(canSeeService("PRACTITIONER", "Anti-wrinkle injections")).toBe(false);
+    expect(canSeeService("PRACTITIONER", "Consultation")).toBe(true);
+    expect(canSeeService("RECEPTION", "Laser treatment")).toBe(true);
+    expect(canSeeService("DOCTOR", "Dermal fillers")).toBe(true);
+    expect(servicesFor("PRACTITIONER")).toEqual(["Consultation", "Follow-up", "Other"]);
   });
 });

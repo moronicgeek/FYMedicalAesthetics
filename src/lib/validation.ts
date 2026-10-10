@@ -23,6 +23,24 @@ export const SERVICES = [
   "Other",
 ] as const;
 
+// Injections, peels and laser are done only by doctors, so practitioners
+// don't see these bookings or book them.
+export const DOCTOR_ONLY_SERVICES: readonly string[] = [
+  "Anti-wrinkle injections",
+  "Dermal fillers",
+  "Skin rejuvenation",
+  "Chemical peel",
+  "Laser treatment",
+];
+
+export function canSeeService(role: string, service: string) {
+  return role !== "PRACTITIONER" || !DOCTOR_ONLY_SERVICES.includes(service);
+}
+
+export function servicesFor(role: string) {
+  return SERVICES.filter((s) => canSeeService(role, s));
+}
+
 export const patientSchema = z
   .object({
     firstName: required("the first name"),

@@ -4,7 +4,7 @@ import { AppointmentList } from "@/components/AppointmentList";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { DoctorQueue, WaitingList, waitingForDoctor } from "@/components/WaitingList";
 import { db } from "@/lib/db";
-import { caseStatusLabel, decryptCase, OPEN_STATUSES } from "@/lib/cases";
+import { caseStatusLabel, decryptCase, OPEN_STATUSES, visibleCasesWhere } from "@/lib/cases";
 import { CONSENT_FORMS } from "@/lib/consent-forms";
 import { listAppointments } from "@/lib/queries";
 import { clinicDateString, clinicDayRange, formatDate } from "@/lib/time";
@@ -20,7 +20,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     startsAt: { gte: start, lt: end },
     ...(user.role === "DOCTOR" ? { doctorId: user.id } : {}),
   });
-  const allOpen = (await db.treatmentCase.findMany({ where: { status: { in: OPEN_STATUSES } }, orderBy: { createdAt: "asc" } })).map(decryptCase);
+  const allOpen = (await db.treatmentCase.findMany({ where: { status: { in: OPEN_STATUSES }, ...visibleCasesWhere(user.role) }, orderBy: { createdAt: "asc" } })).map(decryptCase);
   const waitingCases = allOpen.filter((c) => c.status === "QUEUED");
   const doctorCases = allOpen.filter(waitingForDoctor);
   const openCases = allOpen.filter((c) => c.status !== "QUEUED" && !waitingForDoctor(c));

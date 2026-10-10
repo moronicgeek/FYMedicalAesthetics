@@ -4,12 +4,12 @@ import { BookingForm } from "@/components/BookingForm";
 import { listDoctors } from "@/lib/queries";
 import { searchPatients } from "@/lib/patients";
 import { clinicDateString } from "@/lib/time";
-import { SERVICES } from "@/lib/validation";
+import { servicesFor } from "@/lib/validation";
 
 export const metadata = { title: "Book appointment" };
 
 export default async function NewAppointment({ searchParams }: { searchParams: Promise<{ patientId?: string }> }) {
-  await requireUser();
+  const user = await requireUser();
   const { patientId } = await searchParams;
   const [patients, doctors] = await Promise.all([searchPatients("", 5000), listDoctors()]);
   const patientOptions = patients
@@ -27,7 +27,7 @@ export default async function NewAppointment({ searchParams }: { searchParams: P
       <BookingForm
         patients={patientOptions}
         doctors={doctors.map((d) => ({ value: d.id, label: d.name }))}
-        services={SERVICES}
+        services={servicesFor(user.role)}
         initial={{ patientId: patientId ?? "" }}
         today={clinicDateString()}
       />

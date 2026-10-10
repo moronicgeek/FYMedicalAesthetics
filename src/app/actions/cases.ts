@@ -1,15 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { z } from "zod";
-import { requireUser } from "@/lib/auth";
+import { requireUser, type SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { CONSENT_FORMS, isCaseType } from "@/lib/consent-forms";
 import { cookies } from "next/headers";
 import {
   cancelCase,
+  canSeeCase,
   canTreat,
   checkInCase,
   completeClientForm,
@@ -116,6 +117,7 @@ export async function submitConsentAction(_prev: ConsentFormState, form: FormDat
   // Injections and laser: completing the form the client was handed after
   // check-in. Otherwise the self-service kiosk, which starts a new case.
   if (values.caseId) {
+    await loadOpenCase(values.caseId, user);
     if (!(await completeClientForm(values.caseId, consent))) return { errors: { form: "This form has already been completed." }, values };
     await audit(user, "consent-signed", "TreatmentCase", values.caseId);
     await emailConsent(values.caseId).catch(() => undefined);
@@ -130,16 +132,18 @@ export async function submitConsentAction(_prev: ConsentFormState, form: FormDat
 
 export type StepState = { errors?: FieldErrors; values?: Record<string, string>; message?: string };
 
-async function loadOpenCase(id: string) {
+// Loads a case the signed-in user is allowed to see. Practitioners never see
+// injection or laser cases, so for them those don't exist.
+async function loadOpenCase(id: string, user: SessionUser) {
   const c = await getCase(id);
-  if (!c) throw new Error("Case not found");
+  if (!c || !canSeeCase(user.role, c.type)) notFound();
   return c;
 }
 
 export async function preVitalsAction(_prev: StepState, form: FormData): Promise<StepState> {
   const user = await requireUser(["ADMIN", "DOCTOR", "PRACTITIONER"]);
   const values = formToObject(form);
-  const c = await loadOpenCase(values.caseId);
+  const c = await loadOpenCase(values.caseId, user);
   if (c.type !== "IV_DRIP" || c.status !== "CONSENTED") return { errors: { form: "This step has already been done." }, values };
   const { vitals, errors } = parseVitals(values);
   const doctor = await db.user.findFirst({ where: { id: values.doctorId, role: "DOCTOR", active: true } });
@@ -157,6 +161,7 @@ export async function preVitalsAction(_prev: StepState, form: FormData): Promise
 export async function resendDoctorAction(form: FormData) {
   const user = await requireUser();
   const id = String(form.get("caseId"));
+  await loadOpenCase(id, user);
   const ok = await resendDoctorRequest(id);
   await audit(user, "doctor-request-resent", "TreatmentCase", id);
   redirect(`/cases/${id}${ok ? "?resent=1" : "?undelivered=1"}`);
@@ -166,6 +171,7 @@ export async function resendDoctorAction(form: FormData) {
 export async function manualDecisionAction(form: FormData) {
   const user = await requireUser(["ADMIN", "DOCTOR", "PRACTITIONER"]);
   const id = String(form.get("caseId"));
+  await loadOpenCase(id, user);
   const approve = form.get("decision") === "yes";
   if (await recordDecision(id, approve, `recorded by ${user.name}`)) {
     await audit(user, approve ? "doctor-approve-recorded" : "doctor-decline-recorded", "TreatmentCase", id);
@@ -180,7 +186,7 @@ function officeUseFrom(values: Record<string, string>, type: keyof typeof CONSEN
 export async function postVitalsAction(_prev: StepState, form: FormData): Promise<StepState> {
   const user = await requireUser(["ADMIN", "DOCTOR", "PRACTITIONER"]);
   const values = formToObject(form);
-  const c = await loadOpenCase(values.caseId);
+  const c = await loadOpenCase(values.caseId, user);
   if (c.status !== "IN_PROGRESS") return { errors: { form: "This step isn't available." }, values };
   const { vitals, errors } = parseVitals(values);
   if (!vitals) return { errors, values };
@@ -192,7 +198,7 @@ export async function postVitalsAction(_prev: StepState, form: FormData): Promis
 export async function closeCaseAction(_prev: StepState, form: FormData): Promise<StepState> {
   const user = await requireUser(["ADMIN", "DOCTOR", "PRACTITIONER"]);
   const values = formToObject(form);
-  const c = await loadOpenCase(values.caseId);
+  const c = await loadOpenCase(values.caseId, user);
   if (!canTreat(user.role, c.type)) return { errors: { form: "Only a doctor can close an injection or laser case." }, values };
   const notes = values.notes?.trim();
   const errors: FieldErrors = {};
@@ -208,6 +214,7 @@ export async function closeCaseAction(_prev: StepState, form: FormData): Promise
 export async function resendConsentAction(form: FormData) {
   const user = await requireUser();
   const id = String(form.get("caseId"));
+  await loadOpenCase(id, user);
   const result = await emailConsent(id);
   await audit(user, "consent-resent", "TreatmentCase", id);
   redirect(`/cases/${id}?${result.ok ? "emailed=1" : "emailfail=1"}`);
@@ -237,6 +244,7 @@ export async function checkInAction(_prev: ConsentFormState, form: FormData): Pr
   if (Object.keys(errors).length || !parsed.success) return { errors, values };
 
   const type = values.formType as keyof typeof CONSENT_FORMS;
+  if (!canSeeCase(user.role, type)) return { errors: { formType: "Injections and laser are checked in by reception or a doctor." }, values };
   const startNow = values.intent === "start";
   const iv = type === "IV_DRIP";
   if (startNow && iv && !canTreat(user.role, type)) return { errors: { form: "Only a practitioner or doctor can start an IV drip. Add the client to the waiting list instead." }, values };
@@ -258,7 +266,7 @@ async function lockTablet() {
 export async function handToClientAction(form: FormData) {
   const user = await requireUser();
   const id = String(form.get("caseId"));
-  const c = await loadOpenCase(id);
+  const c = await loadOpenCase(id, user);
   if (c.status !== "QUEUED" || c.type === "IV_DRIP") redirect(`/cases/${id}`);
   await lockTablet();
   await audit(user, "handed-to-patient", "TreatmentCase", id);
@@ -268,7 +276,7 @@ export async function handToClientAction(form: FormData) {
 export async function startCaseAction(form: FormData) {
   const user = await requireUser(["ADMIN", "DOCTOR", "PRACTITIONER"]);
   const id = String(form.get("caseId"));
-  const c = await loadOpenCase(id);
+  const c = await loadOpenCase(id, user);
   if (!canTreat(user.role, c.type) || c.type !== "IV_DRIP") redirect(`/cases/${id}`);
   await startCase(id, user.id);
   await audit(user, "case-started", "TreatmentCase", id);
@@ -278,6 +286,7 @@ export async function startCaseAction(form: FormData) {
 export async function cancelCaseAction(form: FormData) {
   const user = await requireUser();
   const id = String(form.get("caseId"));
+  await loadOpenCase(id, user);
   if (await cancelCase(id)) await audit(user, "case-cancelled", "TreatmentCase", id);
   redirect("/cases");
 }
@@ -294,7 +303,7 @@ const assessmentDetails = z.object({
 export async function assessmentAction(_prev: StepState, form: FormData): Promise<StepState> {
   const user = await requireUser(["ADMIN", "DOCTOR", "PRACTITIONER"]);
   const values = formToObject(form);
-  const c = await loadOpenCase(values.caseId);
+  const c = await loadOpenCase(values.caseId, user);
   if (c.status !== "ASSESSMENT") return { errors: { form: "This step has already been done." }, values };
   if (!canTreat(user.role, c.type)) return { errors: { form: "Only a doctor can take on this treatment." }, values };
   const def = CONSENT_FORMS[c.type];
@@ -351,7 +360,7 @@ export async function assessmentAction(_prev: StepState, form: FormData): Promis
 export async function handToPatientAction(form: FormData) {
   const user = await requireUser(["ADMIN", "DOCTOR", "PRACTITIONER"]);
   const id = String(form.get("caseId"));
-  const c = await loadOpenCase(id);
+  const c = await loadOpenCase(id, user);
   if (c.status !== "AWAITING_SIGNATURE") redirect(`/cases/${id}`);
   await lockTablet();
   await audit(user, "handed-to-patient", "TreatmentCase", id);
@@ -361,7 +370,7 @@ export async function handToPatientAction(form: FormData) {
 export async function signConsentAction(_prev: ConsentFormState, form: FormData): Promise<ConsentFormState> {
   const user = await requireUser();
   const values = formToObject(form);
-  const c = await loadOpenCase(values.caseId);
+  const c = await loadOpenCase(values.caseId, user);
   const def = CONSENT_FORMS[c.type];
   const errors: FieldErrors = {};
   checkAcknowledgements(def, values, errors);

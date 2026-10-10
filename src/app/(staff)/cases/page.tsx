@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { caseStatusLabel, decryptCase, OPEN_STATUSES, OUTCOME_LABEL } from "@/lib/cases";
+import { caseStatusLabel, decryptCase, OPEN_STATUSES, OUTCOME_LABEL, visibleCasesWhere } from "@/lib/cases";
 import { CONSENT_FORMS } from "@/lib/consent-forms";
 import { clinicDateString, clinicDayRange, formatTime } from "@/lib/time";
 import { AutoRefresh } from "@/components/AutoRefresh";
@@ -14,7 +14,7 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
   const { checkedin } = await searchParams;
   const { start } = clinicDayRange(clinicDateString());
   const rows = await db.treatmentCase.findMany({
-    where: { OR: [{ status: { in: OPEN_STATUSES } }, { closedAt: { gte: start } }] },
+    where: { OR: [{ status: { in: OPEN_STATUSES } }, { closedAt: { gte: start } }], ...visibleCasesWhere(user.role) },
     orderBy: { createdAt: "asc" },
   });
   const cases = rows.map(decryptCase);
