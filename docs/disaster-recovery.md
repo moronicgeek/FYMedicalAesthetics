@@ -163,10 +163,9 @@ Consents can be re-emailed from the patient's page once email is back.
 
 ## Running the clinic without the app
 
-Keep a small stock of printed consent forms (Laser, IV Drip,
-Botox/Filler/Peels/Microneedling) and a paper vitals sheet at reception. IV drips
-still need a doctor's YES by phone before starting. Enter the paper records into
-the app once it is back, and file the paper originals.
+The clinic carries on with paper forms and the same safety checks. The full
+staff procedure, downtime kit and re-entry steps are in
+[downtime-procedure.md](downtime-procedure.md).
 
 ## Test the backups
 
