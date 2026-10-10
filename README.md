@@ -151,7 +151,9 @@ expected monthly costs are in [docs/hosting-and-costs.md](docs/hosting-and-costs
    with encryption at rest and `rds.force_ssl` on. Amplify's servers can't join
    a private network (VPC), so the database needs a public endpoint protected by
    TLS and a long generated password. Set `DATABASE_URL` and `DIRECT_URL` to the
-   same connection string, ending in `?sslmode=require`.
+   same connection string, ending in `?sslmode=require`. Set backup retention
+   to 35 days and turn on deletion protection; the rest of the backup setup is
+   in [docs/disaster-recovery.md](docs/disaster-recovery.md).
 2. **Keys.** Generate two encryption keys and a cron secret:
    ```sh
    openssl rand -base64 32   # ENCRYPTION_KEY
