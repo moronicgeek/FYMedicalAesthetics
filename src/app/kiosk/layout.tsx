@@ -9,7 +9,7 @@ export default async function KioskLayout({ children }: { children: React.ReactN
   await requireUser();
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="border-b border-line bg-white">
+      <header className="border-b border-line bg-header">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Logo />
           <TextSize />

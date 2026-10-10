@@ -20,7 +20,7 @@ export function SignaturePad({ name, label, error, defaultValue }: { name: strin
     ctx.lineWidth = 2.5;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-    ctx.strokeStyle = "#1d1b19";
+    ctx.strokeStyle = "#1c1c1c";
     return { ctx, width, height };
   }, []);
 
