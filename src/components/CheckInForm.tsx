@@ -1,9 +1,11 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { checkInAction, type ConsentFormState } from "@/app/actions/cases";
 import { CASE_TYPES, CONSENT_FORMS } from "@/lib/consent-forms";
 import { FormErrors, RadioGroup, TextField } from "./fields";
+import type { IvDrip } from "@/lib/settings";
+import { DripCards } from "./DripCards";
 import { SubmitButton } from "./SubmitButton";
 
 const DESCRIPTIONS = {
@@ -20,10 +22,12 @@ const KIOSK_DESCRIPTIONS = {
 
 // Used by staff on the check-in page, and by the client themselves on the
 // tablet (kiosk), which has a single Continue button.
-export function CheckInForm({ canStartIv = false, ivOnly = false, kiosk = false }: { canStartIv?: boolean; ivOnly?: boolean; kiosk?: boolean }) {
+export function CheckInForm({ canStartIv = false, ivOnly = false, kiosk = false, drips = [] }: { canStartIv?: boolean; ivOnly?: boolean; kiosk?: boolean; drips?: IvDrip[] }) {
   const [state, action] = useActionState<ConsentFormState, FormData>(checkInAction, {});
   const v = state.values ?? {};
   const e = state.errors ?? {};
+  // The drip cards appear once IV drip is chosen.
+  const [type, setType] = useState(v.formType);
   return (
     <form action={action} className="space-y-5" noValidate>
       <FormErrors errors={state.errors} />
@@ -38,7 +42,10 @@ export function CheckInForm({ canStartIv = false, ivOnly = false, kiosk = false 
         <TextField name="emergencyName" label="Emergency contact name" defaultValue={v.emergencyName} error={e.emergencyName} />
         <TextField name="emergencyPhone" label="Emergency contact number" type="tel" inputMode="tel" defaultValue={v.emergencyPhone} error={e.emergencyPhone} />
       </div>
+      <div onChange={(ev) => { const t = ev.target as HTMLInputElement; if (t.name === "formType") setType(t.value); }}>
       <RadioGroup name="formType" label="Treatment" required defaultValue={v.formType} error={e.formType} options={CASE_TYPES.filter((t) => !ivOnly || t === "IV_DRIP").map((t) => ({ value: t, label: (kiosk ? KIOSK_DESCRIPTIONS : DESCRIPTIONS)[t] ?? CONSENT_FORMS[t].shortName }))} />
+      </div>
+      {type === "IV_DRIP" && drips.length > 0 && <DripCards drips={drips} defaultValue={v.drip} error={e.drip} forClient={kiosk} />}
       {kiosk ? (
         <SubmitButton className="btn btn-primary btn-lg w-full sm:w-auto" pendingText="Checking you in…">Continue</SubmitButton>
       ) : (

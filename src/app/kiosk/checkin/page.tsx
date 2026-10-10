@@ -1,9 +1,11 @@
 import { CheckInForm } from "@/components/CheckInForm";
+import { getIvDrips } from "@/lib/settings";
 
 export const metadata = { title: "Check in" };
 
 // Reception hands the tablet to the client, who checks themselves in.
-export default function KioskCheckIn() {
+export default async function KioskCheckIn() {
+  const drips = await getIvDrips();
   return (
     <div className="space-y-6">
       <div>
@@ -11,7 +13,7 @@ export default function KioskCheckIn() {
         <p className="muted mt-2 text-lg">Please enter your details and choose your treatment. You can make the text bigger with the A+ buttons at the top.</p>
       </div>
       <div className="card">
-        <CheckInForm kiosk />
+        <CheckInForm kiosk drips={drips} />
       </div>
     </div>
   );

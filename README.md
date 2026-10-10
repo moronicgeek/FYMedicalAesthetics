@@ -79,10 +79,13 @@ The ranges that decide step 3, and the default on-call doctor, are under
 **Settings** (administrators only). The defaults are a starting point: the
 clinic's medical lead should confirm them before going live.
 
-The practitioner picks the IV drip from a searchable list (start typing to
-filter). Administrators add or remove drips under **Settings > IV drips**; it
-starts with Detox, Jetfuel, Glutago, Myers Cocktail and Myers Cocktail Plus.
-Removing a drip hides it from new cases only; past cases keep it.
+At check-in an IV drip client can tap the drip they'd like on a card (or "Not
+sure"). The practitioner's drip box starts from that choice and they can change
+it; it is a searchable list (start typing to filter). Administrators add,
+describe or remove drips under **Settings > IV drips**; the description is
+shown on the client's card. It starts with Detox, Jetfuel, Glutago, Myers
+Cocktail and Myers Cocktail Plus, with starter descriptions the clinic should
+confirm. Removing a drip hides it from new cases only; past cases keep it.
 
 The original self-service check-in, where the patient fills in and signs the
 whole form on the tablet first, is still in the app under `/kiosk` but no

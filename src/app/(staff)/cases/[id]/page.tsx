@@ -8,7 +8,7 @@ import { db } from "@/lib/db";
 import { decryptPatient } from "@/lib/patients";
 import { listDoctors } from "@/lib/queries";
 import { dateOfBirthFromSaId } from "@/lib/sa-id";
-import { getIvDrips, getOnCallDoctorId, getVitalRanges } from "@/lib/settings";
+import { getIvDripNames, getOnCallDoctorId, getVitalRanges } from "@/lib/settings";
 import { ageFrom, formatDateTime, formatTime } from "@/lib/time";
 import { checkVitals, formatVitals, VITAL_FIELDS, type Vitals } from "@/lib/vitals";
 import { cancelCaseAction, handToClientAction, handToPatientAction, manualDecisionAction, resendConsentAction, resendDoctorAction, startCaseAction } from "@/app/actions/cases";
@@ -67,7 +67,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
   const p = c.consent.patient;
   // Practitioners do IV drips; injections and laser are done by a doctor.
   const clinical = canTreat(user.role, c.type);
-  const [ranges, doctors, onCall, idPhoto, drips] = await Promise.all([getVitalRanges(), listDoctors(), getOnCallDoctorId(), getIdPhoto(c.patientId), getIvDrips()]);
+  const [ranges, doctors, onCall, idPhoto, drips] = await Promise.all([getVitalRanges(), listDoctors(), getOnCallDoctorId(), getIdPhoto(c.patientId), getIvDripNames()]);
   const yesAnswers = form.questions.filter((q) => c.consent.answers[q.id] === "yes");
   const signed = isSigned(c.consent);
   const assessed = Boolean(p.dateOfBirth);
@@ -107,6 +107,8 @@ export default async function CasePage({ params, searchParams }: { params: Promi
       emergencyName: c.consent.emergency.name || prev?.emergencyContact?.name || "",
       emergencyPhone: c.consent.emergency.phone || prev?.emergencyContact?.phone || "",
       medications: prev?.medical.medications ?? "",
+      // The drip the client picked at check-in, if any; the practitioner can change it.
+      treatmentOther: c.consent.treatment ?? "",
     };
   }
 
