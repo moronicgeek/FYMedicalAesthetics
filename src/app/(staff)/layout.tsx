@@ -25,7 +25,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   ];
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="border-b border-line bg-white">
+      <header className="bg-header">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Logo compact />
           <div className="flex flex-wrap items-center gap-3">
@@ -38,12 +38,14 @@ export default async function StaffLayout({ children }: { children: React.ReactN
             </form>
           </div>
         </div>
-        <div className="mx-auto max-w-6xl px-4 pb-3 sm:px-6">
-          <StaffNav links={links} />
+        <div className="bg-nav">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <StaffNav links={links} />
+          </div>
         </div>
       </header>
       <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">{children}</main>
-      <footer className="border-t border-line bg-white py-4 text-center text-sm muted">
+      <footer className="border-t border-line bg-header py-4 text-center text-sm muted">
         Confidential patient information. Do not share your sign-in.
       </footer>
     </div>

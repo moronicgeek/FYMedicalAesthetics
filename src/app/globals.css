@@ -1,17 +1,23 @@
 @import "tailwindcss";
 
-/* Black, white and warm stone, taken from the clinic's monochrome logo.
-   Text colours meet WCAG AAA on the page and card backgrounds. */
+/* "Stone & Charcoal": warm greys and charcoal around the clinic's black
+   monochrome logo, with crisp 4px corners. Text colours meet WCAG AAA on the
+   page, card, header and menu-bar backgrounds. */
 @theme {
-  --color-brand: #1d1b19;
-  --color-brand-dark: #000000;
-  --color-brand-soft: #f0ebe4;
-  --color-ink: #1d1b19;
-  --color-muted: #57524c;
-  --color-line: #ddd5ca;
-  --color-field: #8a8278;
-  --color-canvas: #faf8f5;
+  --color-brand: #2b2b2b;
+  --color-brand-dark: #111111;
+  --color-brand-soft: #ebe9e6;
+  --color-ink: #1c1c1c;
+  --color-muted: #4f4c48;
+  --color-line: #d6d3cf;
+  --color-field: #7f7b76;
+  --color-canvas: #efeeec;
   --color-surface: #ffffff;
+  --color-header: #f7f6f4;
+  --color-nav: #2b2b2b;
+  --color-nav-text: #d4d2cf;
+  --radius-lg: 4px;
+  --radius-xl: 4px;
   --color-danger: #a8201a;
   --color-danger-soft: #fdecea;
   --color-success: #17693a;
@@ -37,7 +43,7 @@ body {
 :focus-visible {
   outline: 3px solid var(--color-brand-dark);
   outline-offset: 3px;
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -47,11 +53,11 @@ body {
 @layer components {
   .skip-link {
     position: absolute; left: 1rem; top: -4rem; z-index: 50;
-    background: var(--color-brand-dark); color: white; padding: 0.75rem 1rem; border-radius: 0.5rem;
+    background: var(--color-brand-dark); color: white; padding: 0.75rem 1rem; border-radius: 4px;
   }
   .skip-link:focus { top: 1rem; }
 
-  .card { background: var(--color-surface); border: 1px solid var(--color-line); border-radius: 1rem; padding: 1.5rem; }
+  .card { background: var(--color-surface); border: 1px solid var(--color-line); border-radius: 4px; padding: 1.5rem; }
   .page-title { font-size: 1.75rem; font-weight: 700; line-height: 1.25; letter-spacing: 0.01em; color: var(--color-ink); }
   /* Spaced capitals echo the MEDICAL / AESTHETICS lettering in the logo. */
   .section-title { font-size: 1.05rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: var(--color-ink); }
@@ -60,7 +66,7 @@ body {
 
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
-    min-height: 3rem; padding: 0.625rem 1.5rem; border-radius: 999px;
+    min-height: 3rem; padding: 0.625rem 1.5rem; border-radius: 4px;
     font-weight: 700; border: 2px solid transparent; cursor: pointer; text-decoration: none;
     transition: background-color 120ms ease;
   }
@@ -76,10 +82,10 @@ body {
   .label { font-weight: 700; }
   .hint { color: var(--color-muted); font-size: 0.9rem; }
   .input {
-    min-height: 3rem; width: 100%; padding: 0.625rem 0.875rem; border-radius: 0.625rem;
+    min-height: 3rem; width: 100%; padding: 0.625rem 0.875rem; border-radius: 4px;
     border: 2px solid var(--color-field); background: white; color: var(--color-ink);
   }
-  .input:focus { border-color: var(--color-brand); }
+  .input:focus { border-color: var(--color-brand-dark); box-shadow: 0 0 0 3px #d9d6d1; }
   .input[aria-invalid="true"] { border-color: var(--color-danger); }
   textarea.input { min-height: 6rem; }
   .error-text { color: var(--color-danger); font-weight: 700; font-size: 0.95rem; }
@@ -87,12 +93,12 @@ body {
   .choice { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.5rem 0; cursor: pointer; }
   .choice input { width: 1.5rem; height: 1.5rem; margin-top: 0.15rem; accent-color: var(--color-brand); flex-shrink: 0; }
 
-  .alert { border-radius: 0.75rem; padding: 1rem 1.25rem; border-left: 6px solid; }
+  .alert { border-radius: 4px; padding: 1rem 1.25rem; border-left: 6px solid; }
   .alert-error { background: var(--color-danger-soft); border-color: var(--color-danger); color: #5c100c; }
   .alert-success { background: var(--color-success-soft); border-color: var(--color-success); color: #0d3d21; }
   .alert-info { background: var(--color-brand-soft); border-color: var(--color-brand); color: var(--color-brand-dark); }
 
-  .badge { display: inline-block; padding: 0.15rem 0.75rem; border-radius: 999px; font-size: 0.85rem; font-weight: 700; }
+  .badge { display: inline-block; padding: 0.15rem 0.75rem; border-radius: 3px; font-size: 0.85rem; font-weight: 700; }
   .badge-BOOKED { background: var(--color-brand-soft); color: var(--color-brand-dark); }
   .badge-CHECKED_IN { background: var(--color-warning-soft); color: var(--color-warning); }
   .badge-COMPLETED { background: var(--color-success-soft); color: var(--color-success); }
@@ -103,7 +109,12 @@ body {
   .table td { padding: 0.875rem 0.75rem; border-bottom: 1px solid var(--color-line); vertical-align: top; }
   .table a { color: var(--color-ink); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 
-  .nav-link { padding: 0.625rem 1.125rem; border-radius: 999px; font-weight: 700; color: var(--color-brand-dark); text-decoration: none; min-height: 3rem; display: inline-flex; align-items: center; }
-  .nav-link:hover { background: var(--color-brand-soft); }
-  .nav-link[aria-current="page"] { background: var(--color-brand); color: white; }
+  /* Charcoal menu bar: light text, white underline on the current page. */
+  .nav-link {
+    display: inline-flex; align-items: center; min-height: 3.25rem; padding: 0.75rem 1.125rem 0.5rem;
+    font-weight: 700; color: var(--color-nav-text); text-decoration: none; border-bottom: 4px solid transparent;
+  }
+  .nav-link:hover { background: #3a3a3a; color: white; }
+  .nav-link[aria-current="page"] { color: white; border-bottom-color: white; }
+  .nav-link:focus-visible { outline-color: white; outline-offset: -3px; }
 }

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#faf8f5" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#efeeec" };
 
 const TEXT_SIZES = new Set(["normal", "large", "xlarge"]);
 
