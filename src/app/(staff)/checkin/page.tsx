@@ -1,11 +1,12 @@
 import { requireUser } from "@/lib/auth";
 import { handCheckInToClientAction } from "@/app/actions/cases";
 import { CheckInForm } from "@/components/CheckInForm";
+import { getIvDrips } from "@/lib/settings";
 
 export const metadata = { title: "Check in a client" };
 
 export default async function CheckInPage() {
-  const user = await requireUser();
+  const [user, drips] = await Promise.all([requireUser(), getIvDrips()]);
   // Practitioners only see IV drip clients, so they don't hand over the
   // tablet: a client could choose an injection or laser there.
   const tablet = user.role !== "PRACTITIONER";
@@ -26,7 +27,7 @@ export default async function CheckInPage() {
       )}
       <section className="card space-y-3" aria-labelledby={tablet ? "desk-heading" : undefined}>
         {tablet && <h2 id="desk-heading" className="section-title">Or enter the details yourself</h2>}
-        <CheckInForm canStartIv={user.role !== "RECEPTION"} ivOnly={user.role === "PRACTITIONER"} />
+        <CheckInForm canStartIv={user.role !== "RECEPTION"} ivOnly={user.role === "PRACTITIONER"} drips={drips} />
       </section>
     </div>
   );
