@@ -245,8 +245,15 @@ export async function checkInAction(_prev: ConsentFormState, form: FormData): Pr
 
   const type = values.formType as keyof typeof CONSENT_FORMS;
   if (!canSeeCase(user.role, type)) return { errors: { formType: "Injections and laser are checked in by reception or a doctor." }, values };
-  const startNow = values.intent === "start";
   const iv = type === "IV_DRIP";
+  // The client checking themselves in on the tablet: IV drip clients join
+  // the waiting list; injection and laser clients go on to their form.
+  if (values.mode === "kiosk") {
+    const created = await checkInCase({ type, ...parsed.data });
+    await audit(user, "checked-in-on-tablet", "TreatmentCase", created.id);
+    redirect(iv ? `/kiosk/checked-in/${created.id}` : `/kiosk/form/${created.id}`);
+  }
+  const startNow = values.intent === "start";
   if (startNow && iv && !canTreat(user.role, type)) return { errors: { form: "Only a practitioner or doctor can start an IV drip. Add the client to the waiting list instead." }, values };
   const created = await checkInCase({ type, ...parsed.data }, startNow && iv ? user : undefined);
   await audit(user, startNow && iv ? "case-started" : "checked-in", "TreatmentCase", created.id);
@@ -259,6 +266,14 @@ export async function checkInAction(_prev: ConsentFormState, form: FormData): Pr
 
 async function lockTablet() {
   (await cookies()).set(KIOSK_COOKIE, "1", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
+}
+
+// Reception hands the tablet to the client to check themselves in.
+export async function handCheckInToClientAction() {
+  const user = await requireUser();
+  await lockTablet();
+  await audit(user, "tablet-check-in", "Device");
+  redirect("/kiosk/checkin");
 }
 
 // Injections and laser: the client fills in their own details, medical history
