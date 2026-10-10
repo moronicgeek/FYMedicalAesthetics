@@ -233,16 +233,33 @@ export async function signConsent(caseId: string, signedName: string, signature:
   return true;
 }
 
+// The signed consent of a case as a PDF, or null if it isn't signed yet.
+export async function consentPdf(caseId: string) {
+  const { buildConsentPdf } = await import("./consent-pdf");
+  const row = await db.treatmentCase.findUnique({ where: { id: caseId } });
+  if (!row) return null;
+  const consent = decryptJson<CaseRecord>(row.consent);
+  if (!isSigned(consent)) return null;
+  const name = `${consent.patient.firstName} ${consent.patient.lastName}`;
+  const filename = `Consent - ${CONSENT_FORMS[consent.formType].shortName} - ${name} - ${consent.signedAt.slice(0, 10)}.pdf`.replace(/[^\w .,-]/g, "");
+  return { consent, filename, pdf: await buildConsentPdf(consent, row.code) };
+}
+
+// A patient's signed consent forms, newest first.
+export async function signedConsents(patientId: string) {
+  const rows = await db.treatmentCase.findMany({ where: { patientId }, orderBy: { createdAt: "desc" } });
+  return rows.flatMap((row) => {
+    const consent = decryptJson<CaseRecord>(row.consent);
+    return isSigned(consent) ? [{ caseId: row.id, code: row.code, type: row.type, treatment: consent.treatment, signedAt: new Date(consent.signedAt) }] : [];
+  });
+}
+
 // Emails the signed consent to the patient and the clinic inbox.
 export async function emailConsent(caseId: string) {
-  const { buildConsentPdf } = await import("./consent-pdf");
-  const row = await db.treatmentCase.findUniqueOrThrow({ where: { id: caseId } });
-  const consent = decryptJson<CaseRecord>(row.consent);
-  if (!isSigned(consent)) return { channel: "email" as const, ok: false, error: "Not signed yet" };
+  const signed = await consentPdf(caseId);
+  if (!signed) return { channel: "email" as const, ok: false, error: "Not signed yet" };
+  const { consent, filename, pdf } = signed;
   const form = CONSENT_FORMS[consent.formType];
-  const pdf = await buildConsentPdf(consent, row.code);
-  const name = `${consent.patient.firstName} ${consent.patient.lastName}`;
-  const filename = `Consent - ${form.shortName} - ${name} - ${consent.signedAt.slice(0, 10)}.pdf`.replace(/[^\w .,-]/g, "");
   const result = await sendEmail(
     [consent.patient.email, clinicInbox()],
     `Your signed consent form - ${clinicName()}`,
