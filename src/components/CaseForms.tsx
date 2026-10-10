@@ -2,10 +2,12 @@
 
 import { useActionState, useState } from "react";
 import { closeCaseAction, postVitalsAction, preVitalsAction, type StepState } from "@/app/actions/cases";
+import type { ConsentFormDef } from "@/lib/consent-forms";
 import { VITAL_FIELDS, type VitalRanges } from "@/lib/vitals";
 import { FormErrors, SelectField, TextField } from "./fields";
 import { SignaturePad } from "./SignaturePad";
 import { SubmitButton } from "./SubmitButton";
+import { TreatmentChoice } from "./TreatmentChoice";
 
 export function VitalInputs({ ranges, values, errors }: { ranges: VitalRanges; values: Record<string, string>; errors: Record<string, string> }) {
   return (
@@ -74,9 +76,23 @@ export function PostVitalsForm({ caseId, ranges, officeUse }: { caseId: string; 
   );
 }
 
-export function CloseCaseForm({ caseId, officeUse, warning, signer = "Practitioner" }: { caseId: string; officeUse?: { id: string; label: string }[]; warning?: string; signer?: string }) {
+export function CloseCaseForm({
+  caseId,
+  officeUse,
+  warning,
+  signer = "Practitioner",
+  treatmentChoice,
+  initial = {},
+}: {
+  caseId: string;
+  officeUse?: { id: string; label: string }[];
+  warning?: string;
+  signer?: string;
+  treatmentChoice?: ConsentFormDef["treatmentChoice"];
+  initial?: Record<string, string>;
+}) {
   const [state, action] = useActionState<StepState, FormData>(closeCaseAction, {});
-  const v = state.values ?? {};
+  const v = state.values ?? initial;
   const e = state.errors ?? {};
   const [count, setCount] = useState((v.notes ?? "").length);
   return (
@@ -84,6 +100,7 @@ export function CloseCaseForm({ caseId, officeUse, warning, signer = "Practition
       <input type="hidden" name="caseId" value={caseId} />
       <FormErrors errors={state.errors} />
       {warning && <div className="alert alert-error">{warning}</div>}
+      {treatmentChoice && <TreatmentChoice choice={treatmentChoice} values={v} error={e.treatment} />}
       {officeUse && officeUse.length > 0 && (
         <div className="grid gap-5 sm:grid-cols-2">
           {officeUse.map((f) => <TextField key={f.id} name={`office_${f.id}`} label={f.label} defaultValue={v[`office_${f.id}`]} />)}

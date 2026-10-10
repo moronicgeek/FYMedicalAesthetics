@@ -200,3 +200,18 @@ export const CASE_TYPES = Object.keys(CONSENT_FORMS) as CaseType[];
 export function isCaseType(v: string): v is CaseType {
   return v in CONSENT_FORMS;
 }
+
+// Form values for a treatment already recorded as "Botox, Filler, lips", so the
+// tick boxes and "Other" box start from it.
+export function treatmentValues(choice: ConsentFormDef["treatmentChoice"], treatment?: string): Record<string, string> {
+  if (!choice || !treatment) return {};
+  const parts = treatment.split(",").map((t) => t.trim()).filter(Boolean);
+  const values: Record<string, string> = {};
+  const other: string[] = [];
+  for (const t of parts) {
+    if (choice.options.includes(t)) values[`treatment_${t}`] = "on";
+    else other.push(t);
+  }
+  if (other.length) values.treatmentOther = other.join(", ");
+  return values;
+}
