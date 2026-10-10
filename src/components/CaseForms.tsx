@@ -74,7 +74,7 @@ export function PostVitalsForm({ caseId, ranges, officeUse }: { caseId: string; 
   );
 }
 
-export function CloseCaseForm({ caseId, officeUse, warning }: { caseId: string; officeUse?: { id: string; label: string }[]; warning?: string }) {
+export function CloseCaseForm({ caseId, officeUse, warning, signer = "Practitioner" }: { caseId: string; officeUse?: { id: string; label: string }[]; warning?: string; signer?: string }) {
   const [state, action] = useActionState<StepState, FormData>(closeCaseAction, {});
   const v = state.values ?? {};
   const e = state.errors ?? {};
@@ -95,7 +95,7 @@ export function CloseCaseForm({ caseId, officeUse, warning }: { caseId: string; 
         <textarea id="notes" name="notes" className="input" maxLength={200} defaultValue={v.notes} onChange={(ev) => setCount(ev.target.value.length)} aria-describedby="notes-count" />
         <span id="notes-count" className="hint" aria-live="polite">{count} / 200 characters</span>
       </label>
-      <SignaturePad name="signature" label="Practitioner signature" error={e.signature} defaultValue={v.signature} />
+      <SignaturePad name="signature" label={`${signer} signature`} error={e.signature} defaultValue={v.signature} />
       <SubmitButton className="btn btn-primary btn-lg" pendingText="Closing…">Sign and close case</SubmitButton>
     </form>
   );

@@ -2,9 +2,9 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { AppointmentList } from "@/components/AppointmentList";
 import { AutoRefresh } from "@/components/AutoRefresh";
-import { WaitingList } from "@/components/WaitingList";
+import { DoctorQueue, WaitingList, waitingForDoctor } from "@/components/WaitingList";
 import { db } from "@/lib/db";
-import { CASE_STATUS_LABEL, decryptCase, OPEN_STATUSES } from "@/lib/cases";
+import { caseStatusLabel, decryptCase, OPEN_STATUSES } from "@/lib/cases";
 import { CONSENT_FORMS } from "@/lib/consent-forms";
 import { listAppointments } from "@/lib/queries";
 import { clinicDateString, clinicDayRange, formatDate } from "@/lib/time";
@@ -22,7 +22,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   });
   const allOpen = (await db.treatmentCase.findMany({ where: { status: { in: OPEN_STATUSES } }, orderBy: { createdAt: "asc" } })).map(decryptCase);
   const waitingCases = allOpen.filter((c) => c.status === "QUEUED");
-  const openCases = allOpen.filter((c) => c.status !== "QUEUED");
+  const doctorCases = allOpen.filter(waitingForDoctor);
+  const openCases = allOpen.filter((c) => c.status !== "QUEUED" && !waitingForDoctor(c));
   const active = items.filter((a) => a.status !== "CANCELLED");
   const completed = items.filter((a) => a.status === "COMPLETED").length;
 
@@ -56,7 +57,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         ))}
       </dl>
 
-      <WaitingList cases={waitingCases} canStart={user.role !== "RECEPTION"} />
+      <WaitingList cases={waitingCases} role={user.role} />
+      <DoctorQueue cases={doctorCases} />
 
       {openCases.length > 0 && (
         <section className="card" aria-labelledby="cases-heading">
@@ -71,7 +73,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                   <p className="muted">{CONSENT_FORMS[c.type].shortName} · #{c.code}</p>
                 </div>
                 <span className={`badge ${["REFERRED", "DECLINED"].includes(c.status) ? "bg-danger-soft text-danger" : ["AWAITING_DOCTOR", "AWAITING_SIGNATURE"].includes(c.status) ? "badge-CHECKED_IN" : "badge-BOOKED"}`}>
-                  {CASE_STATUS_LABEL[c.status]}
+                  {caseStatusLabel(c)}
                 </span>
               </li>
             ))}

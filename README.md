@@ -47,9 +47,22 @@ does not proceed, refers the patient, and closes the case with notes and a
 signature. A client who leaves before being seen can be removed from the
 waiting list.
 
-Botox, filler, peel, microneedling and laser visits follow the same check-in,
-details and history, signing and closing steps, without the vitals and doctor
-approval.
+### Injection and laser visits
+
+Botox, filler, peel, microneedling and laser treatments are done by a doctor,
+and the client fills in their own form:
+
+1. Reception checks the client in as above.
+2. Staff tap **Hand tablet to client**. The tablet locks to the client's form,
+   with their check-in details already filled in. The client adds the rest of
+   their details, answers the yes/no medical questions, reads the conditions
+   and signs. The signed form is emailed as for IV drips.
+3. The case moves to **Waiting for the doctor**. The doctor opens it, reviews
+   the answers, does the treatment and closes the case with the product or
+   batch, notes and their signature.
+
+Practitioners cannot start or close injection and laser cases; only doctors
+and administrators can.
 
 The ranges that decide step 3, and the default on-call doctor, are under
 **Settings** (administrators only). The defaults are a starting point: the

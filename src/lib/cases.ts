@@ -108,6 +108,26 @@ export async function createCaseFromConsent(consent: ConsentRecord) {
   });
 }
 
+// Injections and laser: the client fills in and signs their own form on the
+// tablet after reception has checked them in. The case then waits for the
+// doctor, who does these treatments.
+export async function completeClientForm(caseId: string, consent: ConsentRecord) {
+  const row = await db.treatmentCase.findUnique({ where: { id: caseId } });
+  if (!row || row.status !== "QUEUED" || row.type === "IV_DRIP") return false;
+  const patientId = await savePatientFromRecord(consent, row.patientId);
+  const updated = await db.treatmentCase.updateMany({
+    where: { id: caseId, status: "QUEUED" },
+    data: { patientId, consent: encryptJson(consent), status: "CONSENTED" },
+  });
+  return updated.count === 1;
+}
+
+// Injections and laser are done by a doctor; practitioners only do IV drips.
+export function canTreat(role: SessionUser["role"], type: CaseType) {
+  if (role === "RECEPTION") return false;
+  return type === "IV_DRIP" || role !== "PRACTITIONER";
+}
+
 export type CheckIn = {
   type: CaseType;
   firstName: string;
@@ -413,7 +433,7 @@ export const CASE_STATUS_LABEL: Record<CaseStatus, string> = {
   QUEUED: "Waiting for a practitioner",
   ASSESSMENT: "With practitioner: details and history",
   AWAITING_SIGNATURE: "Ready for the patient to sign",
-  CONSENTED: "Consent signed: waiting for practitioner",
+  CONSENTED: "Form signed: waiting to be seen",
   AWAITING_DOCTOR: "Waiting for doctor's approval",
   IN_PROGRESS: "Signed: treatment in progress",
   READY_TO_CLOSE: "Ready to close",
@@ -429,3 +449,8 @@ export const OUTCOME_LABEL: Record<CaseOutcome, string> = {
   CANCELLED: "Removed from the waiting list",
 };
 
+export function caseStatusLabel(c: { type: CaseType; status: CaseStatus }) {
+  if (c.type !== "IV_DRIP" && c.status === "QUEUED") return "Checked in: client to fill in their form";
+  if (c.type !== "IV_DRIP" && c.status === "CONSENTED") return "Form signed: waiting for the doctor";
+  return CASE_STATUS_LABEL[c.status];
+}

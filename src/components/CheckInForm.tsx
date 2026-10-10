@@ -12,7 +12,7 @@ const DESCRIPTIONS = {
   LASER: "Laser",
 } as const;
 
-export function CheckInForm({ canStart }: { canStart: boolean }) {
+export function CheckInForm({ canStartIv }: { canStartIv: boolean }) {
   const [state, action] = useActionState<ConsentFormState, FormData>(checkInAction, {});
   const v = state.values ?? {};
   const e = state.errors ?? {};
@@ -32,8 +32,13 @@ export function CheckInForm({ canStart }: { canStart: boolean }) {
       <RadioGroup name="formType" label="Treatment" required defaultValue={v.formType} error={e.formType} options={CASE_TYPES.map((t) => ({ value: t, label: DESCRIPTIONS[t] ?? CONSENT_FORMS[t].shortName }))} />
       <div className="flex flex-wrap gap-3">
         <SubmitButton name="intent" value="queue" className="btn btn-primary btn-lg" pendingText="Saving…">Add to waiting list</SubmitButton>
-        {canStart && <SubmitButton name="intent" value="start" className="btn btn-secondary btn-lg" pendingText="Saving…">Start the case now</SubmitButton>}
+        <SubmitButton name="intent" value="start" className="btn btn-secondary btn-lg" pendingText="Saving…">Start now</SubmitButton>
       </div>
+      <p className="muted">
+        {canStartIv
+          ? "Start now opens the practitioner form for an IV drip. For injections and laser it hands the tablet to the client to fill in their form."
+          : "Start now hands the tablet to the client for injections and laser. IV drip clients go on the waiting list for a practitioner."}
+      </p>
     </form>
   );
 }

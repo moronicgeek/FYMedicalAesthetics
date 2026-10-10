@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { CASE_STATUS_LABEL, getCase, getIdPhoto, isSigned, OUTCOME_LABEL } from "@/lib/cases";
+import { canTreat, caseStatusLabel, getCase, getIdPhoto, isSigned, OUTCOME_LABEL } from "@/lib/cases";
 import { CONSENT_FORMS } from "@/lib/consent-forms";
 import { db } from "@/lib/db";
 import { decryptPatient } from "@/lib/patients";
@@ -11,7 +11,7 @@ import { dateOfBirthFromSaId } from "@/lib/sa-id";
 import { getOnCallDoctorId, getVitalRanges } from "@/lib/settings";
 import { ageFrom, formatDateTime, formatTime } from "@/lib/time";
 import { checkVitals, formatVitals, VITAL_FIELDS, type Vitals } from "@/lib/vitals";
-import { cancelCaseAction, handToPatientAction, manualDecisionAction, resendConsentAction, resendDoctorAction, startCaseAction } from "@/app/actions/cases";
+import { cancelCaseAction, handToClientAction, handToPatientAction, manualDecisionAction, resendConsentAction, resendDoctorAction, startCaseAction } from "@/app/actions/cases";
 import { AssessmentForm } from "@/components/AssessmentForm";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { CloseCaseForm, PostVitalsForm, PreVitalsForm } from "@/components/CaseForms";
@@ -65,7 +65,8 @@ export default async function CasePage({ params, searchParams }: { params: Promi
 
   const form = CONSENT_FORMS[c.type];
   const p = c.consent.patient;
-  const clinical = user.role !== "RECEPTION";
+  // Practitioners do IV drips; injections and laser are done by a doctor.
+  const clinical = canTreat(user.role, c.type);
   const [ranges, doctors, onCall, idPhoto] = await Promise.all([getVitalRanges(), listDoctors(), getOnCallDoctorId(), getIdPhoto(c.patientId)]);
   const yesAnswers = form.questions.filter((q) => c.consent.answers[q.id] === "yes");
   const signed = isSigned(c.consent);
@@ -77,6 +78,8 @@ export default async function CasePage({ params, searchParams }: { params: Promi
   const detailsStep: Step = { label: iv ? "Details and vitals" : "Details and history", state: s === "QUEUED" || c.outcome === "CANCELLED" ? "todo" : s === "ASSESSMENT" || s === "CONSENTED" ? "current" : s === "REFERRED" || c.outcome === "REFERRED_VITALS" ? "stopped" : "done" };
   const signStep: Step = { label: "Patient signs", state: signed ? "done" : s === "AWAITING_SIGNATURE" ? "current" : "todo" };
   const closeStep: Step = { label: "Close case", state: s === "CLOSED" && c.outcome !== "CANCELLED" ? "done" : ["READY_TO_CLOSE", "REFERRED", "DECLINED"].includes(s) || (!iv && ["IN_PROGRESS", "CONSENTED"].includes(s)) ? "current" : "todo" };
+  const clientFormStep: Step = { label: "Client fills in and signs", state: signed ? "done" : s === "QUEUED" && c.outcome !== "CANCELLED" ? "current" : "todo" };
+  const doctorStep: Step = { label: "Doctor: treatment and close", state: s === "CLOSED" && c.outcome !== "CANCELLED" ? "done" : signed ? "current" : "todo" };
   const steps: Step[] = iv
     ? [
         { label: "Checked in", state: "done" },
@@ -86,7 +89,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
         { label: "Drip and vitals after", state: s === "IN_PROGRESS" ? "current" : s === "READY_TO_CLOSE" || closedDone ? "done" : "todo" },
         closeStep,
       ]
-    : [{ label: "Checked in", state: "done" }, detailsStep, signStep, closeStep];
+    : [{ label: "Checked in", state: "done" }, clientFormStep, doctorStep];
 
   // What the practitioner starts from: the check-in details, the date of
   // birth from a South African ID number, and a returning patient's record.
@@ -132,7 +135,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
       </div>
 
       <Stepper steps={steps} />
-      <p className="text-lg font-bold" role="status">{s === "CLOSED" && c.outcome ? OUTCOME_LABEL[c.outcome] : CASE_STATUS_LABEL[s]}</p>
+      <p className="text-lg font-bold" role="status">{s === "CLOSED" && c.outcome ? OUTCOME_LABEL[c.outcome] : caseStatusLabel(c)}</p>
 
       {yesAnswers.length > 0 && (
         <div className="alert alert-error" role="note">
@@ -142,11 +145,13 @@ export default async function CasePage({ params, searchParams }: { params: Promi
         </div>
       )}
 
-      {!clinical && s !== "CLOSED" && <div className="alert alert-info">A practitioner or doctor needs to sign in to continue this case.</div>}
+      {!clinical && s !== "CLOSED" && !(s === "QUEUED" && !iv) && (
+        <div className="alert alert-info">{iv ? "A practitioner or doctor needs to sign in to continue this case." : "The doctor sees the client and closes this case."}</div>
+      )}
 
       {s === "QUEUED" && (
         <section className="card space-y-4" aria-labelledby="queue-heading">
-          <h2 id="queue-heading" className="section-title">Waiting for a practitioner</h2>
+          <h2 id="queue-heading" className="section-title">{iv ? "Waiting for a practitioner" : "Client to fill in their form"}</h2>
           <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-3">
             <div><dt className="hint">ID or passport number</dt><dd className="font-bold">{p.idNumber || "-"}</dd></div>
             <div><dt className="hint">Contact number</dt><dd className="font-bold">{p.phone || "-"}</dd></div>
@@ -154,7 +159,8 @@ export default async function CasePage({ params, searchParams }: { params: Promi
           </dl>
           <p className="muted">{c.patientId ? "Returning patient" : "New patient"}</p>
           <div className="flex flex-wrap gap-3">
-            {clinical && <form action={startCaseAction}><input type="hidden" name="caseId" value={c.id} /><button className="btn btn-primary btn-lg" type="submit">Start this case</button></form>}
+            {iv && clinical && <form action={startCaseAction}><input type="hidden" name="caseId" value={c.id} /><button className="btn btn-primary btn-lg" type="submit">Start this case</button></form>}
+            {!iv && <form action={handToClientAction}><input type="hidden" name="caseId" value={c.id} /><button className="btn btn-primary btn-lg" type="submit">Hand the tablet to the client</button></form>}
             <form action={cancelCaseAction}><input type="hidden" name="caseId" value={c.id} /><button className="btn btn-danger" type="submit">Remove from waiting list</button></form>
           </div>
         </section>
@@ -246,7 +252,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
         </div>
       )}
 
-      {clinical && s === "IN_PROGRESS" && (
+      {clinical && iv && s === "IN_PROGRESS" && (
         <section className="card space-y-4" aria-labelledby="post-heading">
           <h2 id="post-heading" className="section-title">After the drip</h2>
           <PostVitalsForm caseId={c.id} ranges={ranges} officeUse={form.officeUse} />
@@ -255,8 +261,9 @@ export default async function CasePage({ params, searchParams }: { params: Promi
 
       {clinical && (["READY_TO_CLOSE", "REFERRED", "DECLINED"].includes(s) || (!iv && ["IN_PROGRESS", "CONSENTED"].includes(s))) && (
         <section className="card space-y-4" aria-labelledby="close-heading">
-          <h2 id="close-heading" className="section-title">Close the case</h2>
-          <CloseCaseForm caseId={c.id} officeUse={iv ? undefined : form.officeUse} />
+          <h2 id="close-heading" className="section-title">{iv ? "Close the case" : "Treatment and close"}</h2>
+          {!iv && <p>Check the client&rsquo;s answers below before treating. When you&rsquo;re done, record the product and close the case with your signature.</p>}
+          <CloseCaseForm caseId={c.id} officeUse={iv ? undefined : form.officeUse} signer={iv ? "Practitioner" : "Doctor"} />
         </section>
       )}
 
@@ -280,7 +287,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
       )}
 
       {assessed && (
-        <details className="card">
+        <details className="card" open={!iv && clinical && s !== "CLOSED"}>
           <summary className="section-title cursor-pointer">{signed ? "Patient details and signed consent" : "Patient details and medical history"}</summary>
           <div className="mt-4 space-y-3">
             <p>
