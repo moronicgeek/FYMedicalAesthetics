@@ -40,6 +40,12 @@ export const OPEN_STATUSES: CaseStatus[] = ["QUEUED", "ASSESSMENT", "AWAITING_SI
 
 const DECISION_LINK_HOURS = 4;
 
+// Every write of the form also refreshes the separately encrypted treatment
+// column the admin overview reads.
+export function consentColumns(record: CaseRecord) {
+  return { consent: encryptJson(record), treatment: encrypt(record.treatment ?? "") };
+}
+
 async function uniqueCode() {
   for (let i = 0; i < 20; i++) {
     const code = String(randomInt(1000, 10000));
@@ -104,7 +110,7 @@ async function savePatientFromRecord(record: CaseRecord, knownPatientId: string 
 export async function createCaseFromConsent(consent: ConsentRecord) {
   const patientId = await savePatientFromRecord(consent, null);
   return db.treatmentCase.create({
-    data: { code: await uniqueCode(), type: consent.formType, status: "CONSENTED", patientId, consent: encryptJson(consent) },
+    data: { code: await uniqueCode(), type: consent.formType, status: "CONSENTED", patientId, ...consentColumns(consent) },
   });
 }
 
@@ -117,7 +123,7 @@ export async function completeClientForm(caseId: string, consent: ConsentRecord)
   const patientId = await savePatientFromRecord(consent, row.patientId);
   const updated = await db.treatmentCase.updateMany({
     where: { id: caseId, status: "QUEUED" },
-    data: { patientId, consent: encryptJson(consent), status: "CONSENTED" },
+    data: { patientId, ...consentColumns(consent), status: "CONSENTED" },
   });
   return updated.count === 1;
 }
@@ -169,7 +175,7 @@ export async function checkInCase(input: CheckIn, startedBy?: Pick<User, "id">) 
       status: startedBy ? "ASSESSMENT" : "QUEUED",
       practitionerId: startedBy?.id,
       patientId: existing?.id ?? null,
-      consent: encryptJson(record),
+      ...consentColumns(record),
     },
   });
 }
@@ -198,7 +204,7 @@ export async function saveAssessment(caseId: string, record: CaseRecord, idPhoto
     data: {
       patientId,
       practitionerId: row.practitionerId ?? practitioner.id,
-      consent: encryptJson(record),
+      ...consentColumns(record),
       ...(row.type === "IV_DRIP" ? {} : { status: "AWAITING_SIGNATURE" }),
     },
   });
@@ -219,7 +225,7 @@ export async function signConsent(caseId: string, signedName: string, signature:
   const signed: ConsentRecord = { ...record, formVersion: CONSENT_FORMS[row.type].version, signedName, signature, signedAt: new Date().toISOString() };
   const updated = await db.treatmentCase.updateMany({
     where: { id: caseId, status: "AWAITING_SIGNATURE" },
-    data: { consent: encryptJson(signed), status: "IN_PROGRESS" },
+    data: { ...consentColumns(signed), status: "IN_PROGRESS" },
   });
   if (updated.count !== 1) return false;
   if (row.patientId) {
@@ -270,7 +276,7 @@ export async function emailConsent(caseId: string) {
   return result;
 }
 
-export type DecryptedCase = Omit<TreatmentCase, "consent" | "preVitals" | "postVitals" | "officeUse" | "closingNotes" | "practitionerSignature"> & {
+export type DecryptedCase = Omit<TreatmentCase, "consent" | "treatment" | "preVitals" | "postVitals" | "officeUse" | "closingNotes" | "practitionerSignature"> & {
   consent: CaseRecord;
   preVitals?: Vitals;
   postVitals?: Vitals;
@@ -279,7 +285,7 @@ export type DecryptedCase = Omit<TreatmentCase, "consent" | "preVitals" | "postV
   practitionerSignature?: string;
 };
 
-export function decryptCase(row: TreatmentCase): DecryptedCase {
+export function decryptCase({ treatment: _treatment, ...row }: TreatmentCase): DecryptedCase {
   return {
     ...row,
     consent: decryptJson<CaseRecord>(row.consent),
@@ -451,7 +457,7 @@ export async function closeCase(caseId: string, practitionerId: string, notes: s
       practitionerId: row.practitionerId ?? practitionerId,
       closingNotes: notes ? encrypt(notes) : null,
       practitionerSignature: encrypt(signature),
-      ...(consent ? { consent: encryptJson(consent) } : {}),
+      ...(consent ? consentColumns(consent) : {}),
       ...(officeUse ? { officeUse: encryptJson({ ...(row.officeUse ? decryptJson<OfficeUse>(row.officeUse) : {}), ...officeUse }) } : {}),
     },
   });

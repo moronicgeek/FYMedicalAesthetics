@@ -111,7 +111,7 @@ body {
 
   /* Charcoal menu bar: light text, white underline on the current page. */
   .nav-link {
-    display: inline-flex; align-items: center; min-height: 3.25rem; padding: 0.75rem 1.125rem 0.5rem;
+    display: inline-flex; align-items: center; min-height: 3.25rem; padding: 0.75rem 0.9rem 0.5rem;
     font-weight: 700; color: var(--color-nav-text); text-decoration: none; border-bottom: 4px solid transparent;
   }
   .nav-link:hover { background: #3a3a3a; color: white; }
