@@ -6,10 +6,13 @@ import { CLINIC_LINE, CONSENT_FORMS, type CaseType } from "@/lib/consent-forms";
 import { Checkbox, FormErrors, TextArea, TextField } from "./fields";
 import { SignaturePad } from "./SignaturePad";
 import { SubmitButton } from "./SubmitButton";
+import { TreatmentChoice } from "./TreatmentChoice";
 
 // The whole consent form, filled in and signed by the client. With a caseId it
-// completes a case reception has already checked in, starting from `initial`.
+// completes a case reception has already checked in, starting from `initial`;
+// the doctor then chooses the treatment, so the client doesn't.
 export function ConsentForm({ type, kiosk, caseId, initial = {} }: { type: CaseType; kiosk: boolean; caseId?: string; initial?: Record<string, string> }) {
+  const chooseTreatment = !caseId;
   const def = CONSENT_FORMS[type];
   const [state, action] = useActionState<ConsentFormState, FormData>(submitConsentAction, {});
   const v = state.values ?? initial;
@@ -40,31 +43,7 @@ export function ConsentForm({ type, kiosk, caseId, initial = {} }: { type: CaseT
           <TextField name="phone" label="Contact number" type="tel" inputMode="tel" required autoComplete="tel" defaultValue={v.phone} error={e.phone} />
           <TextField name="email" label="Email address" type="email" inputMode="email" required autoComplete="email" defaultValue={v.email} error={e.email} hint="We'll email you a copy of this signed form" />
         </div>
-        {def.treatmentChoice && (
-          <div className="field">
-            <span className="label">{def.treatmentChoice.label}</span>
-            {e.treatment && <span className="error-text">{e.treatment}</span>}
-            {def.treatmentChoice.options.length > 0 && (
-              <div className="flex flex-wrap gap-x-6">
-                {def.treatmentChoice.options.map((o) => (
-                  <label key={o} className="choice">
-                    <input type="checkbox" name={`treatment_${o}`} defaultChecked={v[`treatment_${o}`] === "on"} />
-                    <span>{o}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-            {def.treatmentChoice.freeText && (
-              <input
-                name="treatmentOther"
-                className="input"
-                aria-label={def.treatmentChoice.options.length ? "Other treatment" : def.treatmentChoice.label}
-                placeholder={def.treatmentChoice.options.length ? "Other (please describe)" : ""}
-                defaultValue={v.treatmentOther}
-              />
-            )}
-          </div>
-        )}
+        {def.treatmentChoice && chooseTreatment && <TreatmentChoice choice={def.treatmentChoice} values={v} error={e.treatment} />}
       </section>
 
       <section className="card space-y-4" aria-labelledby="info-heading">

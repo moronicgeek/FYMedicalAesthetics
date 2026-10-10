@@ -437,10 +437,11 @@ export function outcomeFor(type: CaseType, status: CaseStatus): CaseOutcome | nu
   return null;
 }
 
-export async function closeCase(caseId: string, practitionerId: string, notes: string | undefined, signature: string, officeUse?: OfficeUse) {
+export async function closeCase(caseId: string, practitionerId: string, notes: string | undefined, signature: string, officeUse?: OfficeUse, treatment?: string) {
   const row = await db.treatmentCase.findUniqueOrThrow({ where: { id: caseId } });
   const outcome = outcomeFor(row.type, row.status);
   if (!outcome) return false;
+  const consent = treatment ? { ...decryptJson<CaseRecord>(row.consent), treatment } : undefined;
   await db.treatmentCase.update({
     where: { id: caseId },
     data: {
@@ -450,6 +451,7 @@ export async function closeCase(caseId: string, practitionerId: string, notes: s
       practitionerId: row.practitionerId ?? practitionerId,
       closingNotes: notes ? encrypt(notes) : null,
       practitionerSignature: encrypt(signature),
+      ...(consent ? { consent: encryptJson(consent) } : {}),
       ...(officeUse ? { officeUse: encryptJson({ ...(row.officeUse ? decryptJson<OfficeUse>(row.officeUse) : {}), ...officeUse }) } : {}),
     },
   });

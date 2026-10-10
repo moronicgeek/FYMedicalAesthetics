@@ -63,8 +63,10 @@ and the client fills in their own form:
    their details, answers the yes/no medical questions, reads the conditions
    and signs. The signed form is emailed as for IV drips.
 3. The case moves to **Waiting for the doctor**. The doctor opens it, reviews
-   the answers, does the treatment and closes the case with the product or
-   batch, notes and their signature.
+   the answers, does the treatment and closes the case by ticking the
+   treatment given (Botox, filler, peel, microneedling or other), then the
+   product or batch, notes and their signature. The client doesn't choose the
+   treatment on their form; the doctor's choice appears on the consent PDF.
 
 Practitioners don't see injection and laser visits at all: they are left out
 of Today, Treatments and the case pages, and practitioners can only check in IV

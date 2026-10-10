@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { canSeeCase, canTreat, caseStatusLabel, getCase, getIdPhoto, isSigned, OUTCOME_LABEL } from "@/lib/cases";
-import { CONSENT_FORMS } from "@/lib/consent-forms";
+import { CONSENT_FORMS, treatmentValues } from "@/lib/consent-forms";
 import { db } from "@/lib/db";
 import { decryptPatient } from "@/lib/patients";
 import { listDoctors } from "@/lib/queries";
@@ -262,8 +262,14 @@ export default async function CasePage({ params, searchParams }: { params: Promi
       {clinical && (["READY_TO_CLOSE", "REFERRED", "DECLINED"].includes(s) || (!iv && ["IN_PROGRESS", "CONSENTED"].includes(s))) && (
         <section className="card space-y-4" aria-labelledby="close-heading">
           <h2 id="close-heading" className="section-title">{iv ? "Close the case" : "Treatment and close"}</h2>
-          {!iv && <p>Check the client&rsquo;s answers below before treating. When you&rsquo;re done, record the product and close the case with your signature.</p>}
-          <CloseCaseForm caseId={c.id} officeUse={iv ? undefined : form.officeUse} signer={iv ? "Practitioner" : "Doctor"} />
+          {!iv && <p>Check the client&rsquo;s answers below before treating. When you&rsquo;re done, tick the treatment you gave, record the product and close the case with your signature.</p>}
+          <CloseCaseForm
+            caseId={c.id}
+            officeUse={iv ? undefined : form.officeUse}
+            signer={iv ? "Practitioner" : "Doctor"}
+            treatmentChoice={iv ? undefined : form.treatmentChoice}
+            initial={iv ? undefined : treatmentValues(form.treatmentChoice, c.consent.treatment)}
+          />
         </section>
       )}
 

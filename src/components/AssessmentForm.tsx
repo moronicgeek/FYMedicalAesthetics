@@ -8,6 +8,7 @@ import { VitalInputs } from "./CaseForms";
 import { FormErrors, SelectField, TextArea, TextField } from "./fields";
 import { IdPhotoField } from "./IdPhotoField";
 import { SubmitButton } from "./SubmitButton";
+import { TreatmentChoice } from "./TreatmentChoice";
 
 // The practitioner fills this in with the client: details, the medical history
 // questions from the consent form and, for an IV drip, the vitals.
@@ -53,31 +54,7 @@ export function AssessmentForm({
           <TextField name="emergencyPhone" label="Emergency contact number" type="tel" inputMode="tel" defaultValue={v.emergencyPhone} />
         </div>
         <IdPhotoField name="idPhoto" onFile={idPhotoOnFile} error={e.idPhoto} />
-        {def.treatmentChoice && (
-          <div className="field">
-            <span className="label">{def.treatmentChoice.label}</span>
-            {e.treatment && <span className="error-text">{e.treatment}</span>}
-            {def.treatmentChoice.options.length > 0 && (
-              <div className="flex flex-wrap gap-x-6">
-                {def.treatmentChoice.options.map((o) => (
-                  <label key={o} className="choice">
-                    <input type="checkbox" name={`treatment_${o}`} defaultChecked={v[`treatment_${o}`] === "on"} />
-                    <span>{o}</span>
-                  </label>
-                ))}
-              </div>
-            )}
-            {def.treatmentChoice.freeText && (
-              <input
-                name="treatmentOther"
-                className="input"
-                aria-label={def.treatmentChoice.options.length ? "Other treatment" : def.treatmentChoice.label}
-                placeholder={def.treatmentChoice.options.length ? "Other (please describe)" : ""}
-                defaultValue={v.treatmentOther}
-              />
-            )}
-          </div>
-        )}
+        {def.treatmentChoice && <TreatmentChoice choice={def.treatmentChoice} values={v} error={e.treatment} />}
       </section>
 
       <section className="card space-y-2" aria-labelledby="history-heading">

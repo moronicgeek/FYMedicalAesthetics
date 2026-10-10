@@ -260,7 +260,7 @@ export async function buildConsentPdf(consent: ConsentRecord, caseCode: string):
     ["ID number", p.idNumber || "-"],
     ["Contact number", p.phone],
     ["Email", p.email],
-    [form.treatmentChoice?.label ?? "Treatment", consent.treatment || "-"],
+    [form.treatmentChoice?.label ?? "Treatment", consent.treatment || (form.type === "IV_DRIP" ? "-" : "To be chosen by the doctor")],
     ["Emergency contact", [consent.emergency.name, consent.emergency.phone].filter(Boolean).join(", ") || "-"],
     ["Date signed", signedAt],
   ]);

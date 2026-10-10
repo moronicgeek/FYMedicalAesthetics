@@ -86,7 +86,9 @@ export async function submitConsentAction(_prev: ConsentFormState, form: FormDat
 
   const answers = parseHistory(def, values, errors);
   checkAcknowledgements(def, values, errors);
-  const treatment = parseTreatment(def, values, errors);
+  // A client completing a checked-in form doesn't choose the treatment; the
+  // doctor does when closing the case.
+  const treatment = values.caseId ? undefined : parseTreatment(def, values, errors);
 
   if (!validSignature(values.signature)) errors.signature = "Please sign in the box.";
 
@@ -204,9 +206,11 @@ export async function closeCaseAction(_prev: StepState, form: FormData): Promise
   const errors: FieldErrors = {};
   if (notes && notes.length > 200) errors.notes = "Please keep notes to 200 characters.";
   if (!validSignature(values.signature)) errors.signature = "Please sign in the box.";
+  // Injections and laser: the doctor records which treatment was given.
+  const treatment = c.type === "IV_DRIP" ? undefined : parseTreatment(CONSENT_FORMS[c.type], values, errors);
   if (Object.keys(errors).length) return { errors, values };
   const officeUse = c.type === "IV_DRIP" ? undefined : officeUseFrom(values, c.type);
-  if (!(await closeCase(c.id, user.id, notes, values.signature, officeUse))) return { errors: { form: "This case can't be closed yet." }, values };
+  if (!(await closeCase(c.id, user.id, notes, values.signature, officeUse, treatment))) return { errors: { form: "This case can't be closed yet." }, values };
   await audit(user, "case-closed", "TreatmentCase", c.id);
   redirect(`/cases/${c.id}?closed=1`);
 }
