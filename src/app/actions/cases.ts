@@ -31,7 +31,7 @@ import {
 } from "@/lib/cases";
 import type { ConsentFormDef } from "@/lib/consent-forms";
 import { KIOSK_COOKIE } from "@/lib/kiosk";
-import { getIvDrips } from "@/lib/settings";
+import { getIvDripNames } from "@/lib/settings";
 import { validIdPhoto, validSignature } from "@/lib/signature";
 import { formToObject, type FieldErrors } from "@/lib/validation";
 import { parseVitals } from "@/lib/vitals";
@@ -68,7 +68,7 @@ function parseTreatment(def: ConsentFormDef, values: Record<string, string>, err
 async function parseDrip(values: Record<string, string>, errors: FieldErrors) {
   const drip = values.treatmentOther?.trim();
   if (!drip) errors.treatment = "Please choose the drip from the list.";
-  else if (!(await getIvDrips()).includes(drip)) errors.treatment = `${drip} is not on the drip list. Please choose one from the list.`;
+  else if (!(await getIvDripNames()).includes(drip)) errors.treatment = `${drip} is not on the drip list. Please choose one from the list.`;
   return drip;
 }
 
@@ -259,16 +259,19 @@ export async function checkInAction(_prev: ConsentFormState, form: FormData): Pr
   const type = values.formType as keyof typeof CONSENT_FORMS;
   if (!canSeeCase(user.role, type)) return { errors: { formType: "Injections and laser are checked in by reception or a doctor." }, values };
   const iv = type === "IV_DRIP";
+  // An IV client may pick a drip; the practitioner can change it later.
+  const drip = iv && values.drip ? values.drip : undefined;
+  if (drip && !(await getIvDripNames()).includes(drip)) return { errors: { drip: "Please choose a drip from the list." }, values };
   // The client checking themselves in on the tablet: IV drip clients join
   // the waiting list; injection and laser clients go on to their form.
   if (values.mode === "kiosk") {
-    const created = await checkInCase({ type, ...parsed.data });
+    const created = await checkInCase({ type, ...parsed.data, drip });
     await audit(user, "checked-in-on-tablet", "TreatmentCase", created.id);
     redirect(iv ? `/kiosk/checked-in/${created.id}` : `/kiosk/form/${created.id}`);
   }
   const startNow = values.intent === "start";
   if (startNow && iv && !canTreat(user.role, type)) return { errors: { form: "Only a practitioner or doctor can start an IV drip. Add the client to the waiting list instead." }, values };
-  const created = await checkInCase({ type, ...parsed.data }, startNow && iv ? user : undefined);
+  const created = await checkInCase({ type, ...parsed.data, drip }, startNow && iv ? user : undefined);
   await audit(user, startNow && iv ? "case-started" : "checked-in", "TreatmentCase", created.id);
   if (!startNow) redirect(`/cases?checkedin=1`);
   if (iv) redirect(`/cases/${created.id}`);

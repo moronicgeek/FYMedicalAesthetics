@@ -152,6 +152,8 @@ export type CheckIn = {
   phone: string;
   emergencyName?: string;
   emergencyPhone?: string;
+  // The IV drip the client asked for, if they chose one.
+  drip?: string;
 };
 
 // The client gives their names, ID number, contact number, emergency contact
@@ -167,6 +169,7 @@ export async function checkInCase(input: CheckIn, startedBy?: Pick<User, "id">) 
     answers: {},
     details: {},
     emergency: { name: input.emergencyName, phone: input.emergencyPhone },
+    treatment: input.drip,
   };
   return db.treatmentCase.create({
     data: {

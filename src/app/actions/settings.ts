@@ -28,27 +28,41 @@ export async function saveSettingsAction(_prev: SettingsState, form: FormData): 
 
 export type DripState = { message?: string; error?: string; seq?: number };
 
-// Adds or removes one IV drip on the list practitioners choose from.
+// Adds, edits or removes one IV drip on the list clients and practitioners
+// choose from.
 export async function ivDripAction(prev: DripState, form: FormData): Promise<DripState> {
   const admin = await requireUser(["ADMIN"]);
   const seq = (prev.seq ?? 0) + 1;
   const name = String(form.get("drip") ?? "").trim().replace(/\s+/g, " ");
+  const description = String(form.get("description") ?? "").trim().replace(/\s+/g, " ");
+  const intent = form.get("intent");
   const drips = await getIvDrips();
+  const existing = drips.find((d) => d.name === name);
 
-  if (form.get("intent") === "remove") {
-    if (!drips.includes(name)) return { seq };
+  if (description.length > 200) return { error: "Please keep the description to 200 characters.", seq };
+
+  if (intent === "remove") {
+    if (!existing) return { seq };
     if (drips.length === 1) return { error: "Keep at least one drip on the list.", seq };
-    await setIvDrips(drips.filter((d) => d !== name));
+    await setIvDrips(drips.filter((d) => d !== existing));
     await audit(admin, "iv-drip-removed", "Settings");
     revalidatePath("/settings");
     return { message: `${name} removed. Past cases keep it.`, seq };
   }
 
+  if (intent === "update") {
+    if (!existing) return { seq };
+    await setIvDrips(drips.map((d) => (d === existing ? { ...d, description } : d)));
+    await audit(admin, "iv-drip-updated", "Settings");
+    revalidatePath("/settings");
+    return { message: `${name} description saved.`, seq };
+  }
+
   if (!name) return { error: "Please type the name of the drip.", seq };
   if (name.length > 60) return { error: "Please keep the name under 60 characters.", seq };
   if (name.includes(",")) return { error: "Please leave commas out of the name.", seq };
-  if (drips.some((d) => d.toLowerCase() === name.toLowerCase())) return { error: `${name} is already on the list.`, seq };
-  await setIvDrips([...drips, name]);
+  if (drips.some((d) => d.name.toLowerCase() === name.toLowerCase())) return { error: `${name} is already on the list.`, seq };
+  await setIvDrips([...drips, { name, description }]);
   await audit(admin, "iv-drip-added", "Settings");
   revalidatePath("/settings");
   return { message: `${name} added.`, seq };
