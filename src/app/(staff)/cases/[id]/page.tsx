@@ -8,7 +8,7 @@ import { db } from "@/lib/db";
 import { decryptPatient } from "@/lib/patients";
 import { listDoctors } from "@/lib/queries";
 import { dateOfBirthFromSaId } from "@/lib/sa-id";
-import { getOnCallDoctorId, getVitalRanges } from "@/lib/settings";
+import { getIvDrips, getOnCallDoctorId, getVitalRanges } from "@/lib/settings";
 import { ageFrom, formatDateTime, formatTime } from "@/lib/time";
 import { checkVitals, formatVitals, VITAL_FIELDS, type Vitals } from "@/lib/vitals";
 import { cancelCaseAction, handToClientAction, handToPatientAction, manualDecisionAction, resendConsentAction, resendDoctorAction, startCaseAction } from "@/app/actions/cases";
@@ -67,7 +67,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
   const p = c.consent.patient;
   // Practitioners do IV drips; injections and laser are done by a doctor.
   const clinical = canTreat(user.role, c.type);
-  const [ranges, doctors, onCall, idPhoto] = await Promise.all([getVitalRanges(), listDoctors(), getOnCallDoctorId(), getIdPhoto(c.patientId)]);
+  const [ranges, doctors, onCall, idPhoto, drips] = await Promise.all([getVitalRanges(), listDoctors(), getOnCallDoctorId(), getIdPhoto(c.patientId), getIvDrips()]);
   const yesAnswers = form.questions.filter((q) => c.consent.answers[q.id] === "yes");
   const signed = isSigned(c.consent);
   const assessed = Boolean(p.dateOfBirth);
@@ -176,6 +176,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
             ranges={ranges}
             doctors={doctors.map((d) => ({ value: d.id, label: d.name }))}
             defaultDoctorId={onCall ?? undefined}
+            drips={drips}
           />
           <form action={cancelCaseAction}><input type="hidden" name="caseId" value={c.id} /><button className="text-danger underline" type="submit">Client has left: remove this case</button></form>
         </>
