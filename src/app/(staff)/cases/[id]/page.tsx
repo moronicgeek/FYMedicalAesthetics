@@ -18,6 +18,9 @@ import { CloseCaseForm, PostVitalsForm, PreVitalsForm } from "@/components/CaseF
 
 export const metadata = { title: "Treatment case" };
 
+// Recorded on every close form, alongside each form's own office-use fields.
+const SALES_FIELDS = [{ id: "retail", label: "Retail" }, { id: "productsSold", label: "Products sold" }];
+
 type Step = { label: string; state: "done" | "current" | "todo" | "stopped" };
 
 function Stepper({ steps }: { steps: Step[] }) {
@@ -113,6 +116,51 @@ export default async function CasePage({ params, searchParams }: { params: Promi
   }
 
   const preCheck = c.preVitals ? checkVitals(c.preVitals, ranges) : null;
+
+  // The doctor reads the client's answers before treating, so on injection
+  // and laser cases they sit above the treatment and close form.
+  const historyFirst = !iv && clinical && s !== "CLOSED";
+  const historySection = assessed && (
+    <details className="card" open={historyFirst}>
+      <summary className="section-title cursor-pointer">{signed ? "Patient details and signed consent" : "Patient details and medical history"}</summary>
+      <div className="mt-4 space-y-3">
+        <p>
+          {form.title}, version {c.consent.formVersion}.{" "}
+          {signed ? <>Signed by <strong>{c.consent.signedName}</strong> on {formatDateTime(new Date(c.consent.signedAt!))}.</> : "Not signed by the patient."}
+        </p>
+        <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
+          <div><dt className="hint">Date of birth</dt><dd>{p.dateOfBirth}</dd></div>
+          <div><dt className="hint">ID number</dt><dd>{p.idNumber || "-"}</dd></div>
+          <div><dt className="hint">Mobile</dt><dd>{p.phone}</dd></div>
+          <div><dt className="hint">Email</dt><dd>{p.email}</dd></div>
+          <div><dt className="hint">Emergency contact</dt><dd>{[c.consent.emergency.name, c.consent.emergency.phone].filter(Boolean).join(" · ") || "-"}</dd></div>
+        </dl>
+        {idPhoto && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={idPhoto} alt="Photo of the patient's ID document" className="max-h-56 rounded-lg border border-line bg-white" />
+        )}
+        <table className="table">
+          <tbody>
+            {form.questions.map((q) => (
+              <tr key={q.id}><td>{q.text}</td><td className={`font-bold ${c.consent.answers[q.id] === "yes" ? "text-danger" : ""}`}>{c.consent.answers[q.id] === "yes" ? "Yes" : c.consent.answers[q.id] === "no" ? "No" : "-"}</td></tr>
+            ))}
+          </tbody>
+        </table>
+        {form.detailFields.map((d) => <p key={d.id}><span className="font-bold">{d.label}:</span> {c.consent.details[d.id] || "-"}</p>)}
+        {signed && (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={c.consent.signature} alt={`Signature of ${c.consent.signedName}`} className="h-24 rounded-lg border border-line bg-white" />
+            <p className="muted">{c.consentEmailedAt ? `Emailed to the patient and clinic on ${formatDateTime(c.consentEmailedAt)}.` : "Not emailed yet."}</p>
+            <div className="flex flex-wrap gap-3">
+              <form action={resendConsentAction}><input type="hidden" name="caseId" value={c.id} /><button className="btn btn-secondary" type="submit">{c.consentEmailedAt ? "Email it again" : "Email the consent form"}</button></form>
+              {user.role === "ADMIN" && <a className="btn btn-secondary" href={`/cases/${c.id}/consent.pdf`} download>Download PDF</a>}
+            </div>
+          </>
+        )}
+      </div>
+    </details>
+  );
 
   return (
     <div className="space-y-6">
@@ -262,16 +310,18 @@ export default async function CasePage({ params, searchParams }: { params: Promi
         </section>
       )}
 
+      {historyFirst && historySection}
+
       {clinical && (["READY_TO_CLOSE", "REFERRED", "DECLINED"].includes(s) || (!iv && ["IN_PROGRESS", "CONSENTED"].includes(s))) && (
         <section className="card space-y-4" aria-labelledby="close-heading">
           <h2 id="close-heading" className="section-title">{iv ? "Close the case" : "Treatment and close"}</h2>
-          {!iv && <p>Check the client&rsquo;s answers below before treating. When you&rsquo;re done, tick the treatment you gave, record the product and close the case with your signature.</p>}
+          {!iv && <p>Check the client&rsquo;s answers above before treating. When you&rsquo;re done, tick the treatment you gave, record the product and close the case with your signature.</p>}
           <CloseCaseForm
             caseId={c.id}
             officeUse={iv ? undefined : form.officeUse}
             signer={iv ? "Practitioner" : "Doctor"}
             treatmentChoice={iv ? undefined : form.treatmentChoice}
-            initial={iv ? undefined : treatmentValues(form.treatmentChoice, c.consent.treatment)}
+            initial={iv ? undefined : treatmentValues(form.treatmentChoice, c.consent.treatment || (c.type === "LASER" ? "Laser" : undefined))}
           />
         </section>
       )}
@@ -282,7 +332,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
           <p>{c.outcome === "CANCELLED" ? "Removed from the waiting list" : `Closed by ${c.practitioner?.name ?? "practitioner"}`} on {c.closedAt ? formatDateTime(c.closedAt) : ""}.</p>
           {Object.entries(c.officeUse).filter(([, v]) => v).length > 0 && (
             <dl className="grid gap-x-6 sm:grid-cols-3">
-              {form.officeUse.map((f) => c.officeUse[f.id] && (
+              {[...form.officeUse, ...SALES_FIELDS].map((f) => c.officeUse[f.id] && (
                 <div key={f.id}><dt className="hint">{f.label}</dt><dd className="font-bold">{c.officeUse[f.id]}</dd></div>
               ))}
             </dl>
@@ -295,47 +345,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
         </section>
       )}
 
-      {assessed && (
-        <details className="card" open={!iv && clinical && s !== "CLOSED"}>
-          <summary className="section-title cursor-pointer">{signed ? "Patient details and signed consent" : "Patient details and medical history"}</summary>
-          <div className="mt-4 space-y-3">
-            <p>
-              {form.title}, version {c.consent.formVersion}.{" "}
-              {signed ? <>Signed by <strong>{c.consent.signedName}</strong> on {formatDateTime(new Date(c.consent.signedAt!))}.</> : "Not signed by the patient."}
-            </p>
-            <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
-              <div><dt className="hint">Date of birth</dt><dd>{p.dateOfBirth}</dd></div>
-              <div><dt className="hint">ID number</dt><dd>{p.idNumber || "-"}</dd></div>
-              <div><dt className="hint">Mobile</dt><dd>{p.phone}</dd></div>
-              <div><dt className="hint">Email</dt><dd>{p.email}</dd></div>
-              <div><dt className="hint">Emergency contact</dt><dd>{[c.consent.emergency.name, c.consent.emergency.phone].filter(Boolean).join(" · ") || "-"}</dd></div>
-            </dl>
-            {idPhoto && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={idPhoto} alt="Photo of the patient's ID document" className="max-h-56 rounded-lg border border-line bg-white" />
-            )}
-            <table className="table">
-              <tbody>
-                {form.questions.map((q) => (
-                  <tr key={q.id}><td>{q.text}</td><td className={`font-bold ${c.consent.answers[q.id] === "yes" ? "text-danger" : ""}`}>{c.consent.answers[q.id] === "yes" ? "Yes" : c.consent.answers[q.id] === "no" ? "No" : "-"}</td></tr>
-                ))}
-              </tbody>
-            </table>
-            {form.detailFields.map((d) => <p key={d.id}><span className="font-bold">{d.label}:</span> {c.consent.details[d.id] || "-"}</p>)}
-            {signed && (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={c.consent.signature} alt={`Signature of ${c.consent.signedName}`} className="h-24 rounded-lg border border-line bg-white" />
-                <p className="muted">{c.consentEmailedAt ? `Emailed to the patient and clinic on ${formatDateTime(c.consentEmailedAt)}.` : "Not emailed yet."}</p>
-                <div className="flex flex-wrap gap-3">
-                  <form action={resendConsentAction}><input type="hidden" name="caseId" value={c.id} /><button className="btn btn-secondary" type="submit">{c.consentEmailedAt ? "Email it again" : "Email the consent form"}</button></form>
-                  {user.role === "ADMIN" && <a className="btn btn-secondary" href={`/cases/${c.id}/consent.pdf`} download>Download PDF</a>}
-                </div>
-              </>
-            )}
-          </div>
-        </details>
-      )}
+      {!historyFirst && historySection}
     </div>
   );
 }

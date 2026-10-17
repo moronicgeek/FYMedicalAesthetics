@@ -106,6 +106,15 @@ export function CloseCaseForm({
           {officeUse.map((f) => <TextField key={f.id} name={`office_${f.id}`} label={f.label} defaultValue={v[`office_${f.id}`]} />)}
         </div>
       )}
+      <label className="choice">
+        <input type="checkbox" name="retail" defaultChecked={v.retail === "on"} />
+        <span>Retail</span>
+      </label>
+      <label className="field" htmlFor="productsSold">
+        <span className="label">Were any products sold? <span className="font-normal text-muted">(optional)</span></span>
+        <span className="hint">Type the products and quantities, for example &ldquo;2 x SPF 50 sunscreen&rdquo;</span>
+        <textarea id="productsSold" name="productsSold" className="input" maxLength={500} defaultValue={v.productsSold} />
+      </label>
       <label className="field" htmlFor="notes">
         <span className="label">Notes <span className="font-normal text-muted">(optional)</span></span>
         {e.notes && <span id="notes-error" className="error-text">{e.notes}</span>}

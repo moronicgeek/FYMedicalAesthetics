@@ -194,6 +194,11 @@ function officeUseFrom(values: Record<string, string>, type: keyof typeof CONSEN
   return Object.fromEntries(CONSENT_FORMS[type].officeUse.map((f) => [f.id, values[`office_${f.id}`]?.trim() ?? ""]));
 }
 
+// Whether this visit included a retail sale, and what was sold (typed in).
+function salesFrom(values: Record<string, string>): OfficeUse {
+  return { retail: values.retail === "on" ? "Yes" : "", productsSold: values.productsSold?.trim().slice(0, 500) ?? "" };
+}
+
 export async function postVitalsAction(_prev: StepState, form: FormData): Promise<StepState> {
   const user = await requireUser(["ADMIN", "DOCTOR", "PRACTITIONER"]);
   const values = formToObject(form);
@@ -218,10 +223,11 @@ export async function closeCaseAction(_prev: StepState, form: FormData): Promise
   // Injections and laser: the doctor records which treatment was given.
   const treatment = c.type === "IV_DRIP" ? undefined : parseTreatment(CONSENT_FORMS[c.type], values, errors);
   if (Object.keys(errors).length) return { errors, values };
-  const officeUse = c.type === "IV_DRIP" ? undefined : officeUseFrom(values, c.type);
+  const officeUse = { ...(c.type === "IV_DRIP" ? {} : officeUseFrom(values, c.type)), ...salesFrom(values) };
   if (!(await closeCase(c.id, user.id, notes, values.signature, officeUse, treatment))) return { errors: { form: "This case can't be closed yet." }, values };
   await audit(user, "case-closed", "TreatmentCase", c.id);
-  redirect(`/cases/${c.id}?closed=1`);
+  // Back to Today so the next client can be picked up.
+  redirect("/dashboard?closed=1");
 }
 
 export async function resendConsentAction(form: FormData) {
