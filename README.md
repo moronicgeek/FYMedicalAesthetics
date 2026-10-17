@@ -158,8 +158,11 @@ expected monthly costs are in [docs/hosting-and-costs.md](docs/hosting-and-costs
 1. **Database.** Create an Amazon RDS for PostgreSQL instance in `eu-west-1`
    with encryption at rest and `rds.force_ssl` on. Amplify's servers can't join
    a private network (VPC), so the database needs a public endpoint protected by
-   TLS and a long generated password. Set `DATABASE_URL` and `DIRECT_URL` to the
-   same connection string, ending in `?sslmode=require`. Set backup retention
+   TLS and a long generated password. Set `DIRECT_URL` to the admin login (used
+   only for migrations at build time) and `DATABASE_URL` to a separate login that
+   can only read and write rows; both end in `?sslmode=require`. The running app
+   only ever sees `DATABASE_URL`. Turn on GuardDuty's RDS login monitoring to be
+   alerted to brute-force or unusual sign-ins. Set backup retention
    to 35 days and turn on deletion protection; the rest of the backup setup is
    in [docs/disaster-recovery.md](docs/disaster-recovery.md).
 2. **Keys.** Generate two encryption keys and a cron secret:
