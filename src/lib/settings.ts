@@ -54,5 +54,5 @@ export async function setIvDrips(drips: IvDrip[]) {
 }
 
 export function clinicInbox() {
-  return process.env.CLINIC_INBOX_EMAIL || "hello@lumierclinic.co.za";
+  return process.env.CLINIC_INBOX_EMAIL || "hello@lumiereclinic.co.za";
 }
