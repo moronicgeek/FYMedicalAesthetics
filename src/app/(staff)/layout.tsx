@@ -26,7 +26,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
   ];
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="bg-header">
+      <header className="border-t-4 border-accent bg-header">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Logo compact />
           <div className="flex flex-wrap items-center gap-3">

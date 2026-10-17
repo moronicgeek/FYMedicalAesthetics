@@ -1,5 +1,5 @@
 #!/bin/sh
-# Generates the FY Medical production secrets into a file as NAME=value lines.
+# Generates the Lumiere Clinic portal production secrets into a file as NAME=value lines.
 # Usage: sh generate-secrets.sh [output file]   (default: fymedical-secrets.env)
 set -eu
 out="${1:-fymedical-secrets.env}"

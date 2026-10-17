@@ -19,7 +19,7 @@ export function SignConsentForm({ caseId, type, patientName, treatment }: { case
     <form action={action} className="space-y-8" noValidate>
       <input type="hidden" name="caseId" value={caseId} />
       <header className="space-y-1">
-        <p className="muted text-sm">FY Medical Aesthetics · {CLINIC_LINE}</p>
+        <p className="muted text-sm">Lumiere Clinic · {CLINIC_LINE}</p>
         <h1 className="page-title">{def.title}</h1>
         <p className="text-lg">For <strong>{patientName}</strong>{treatment ? <> · {treatment}</> : null}</p>
         <p className="muted">Please read the information below, tick each statement and sign at the bottom.</p>

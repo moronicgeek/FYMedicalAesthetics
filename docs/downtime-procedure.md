@@ -7,7 +7,7 @@ step. For the technical recovery steps see
 
 ## Purpose
 
-If the FY Medical app cannot be used, the clinic keeps seeing clients on paper and enters the records into the app once it is back. No treatment is ever skipped or rushed because the app is down: the same safety checks apply, they are just written down instead of typed.
+If the Lumiere Clinic portal cannot be used, the clinic keeps seeing clients on paper and enters the records into the app once it is back. No treatment is ever skipped or rushed because the app is down: the same safety checks apply, they are just written down instead of typed.
 
 Use this guide when:
 

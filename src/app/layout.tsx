@@ -3,8 +3,8 @@ import { cookies } from "next/headers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "FY Medical Aesthetics", template: "%s · FY Medical Aesthetics" },
-  description: "Patient intake and appointments for FY Medical Aesthetics.",
+  title: { default: "Lumiere Clinic", template: "%s · Lumiere Clinic" },
+  description: "Patient intake and appointments for Lumiere Clinic.",
   robots: { index: false, follow: false },
 };
 

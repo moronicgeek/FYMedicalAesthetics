@@ -1,6 +1,7 @@
 // The clinic's consent forms, transcribed from the Word templates supplied by
-// FY Medical Aesthetics. Bump `version` whenever the wording changes so each
-// signed consent records exactly which text the patient agreed to.
+// the clinic (then called FY Medical Aesthetics, now Lumiere Clinic). Bump
+// `version` whenever the wording changes so each signed consent records
+// exactly which text the patient agreed to.
 
 export type CaseType = "IV_DRIP" | "AESTHETICS" | "LASER";
 
@@ -24,12 +25,12 @@ export type ConsentFormDef = {
   requiresDoctorApproval: boolean;
 };
 
-export const CLINIC_LINE = "Managed by Lumiere Clinic | Robertsham, Johannesburg";
+export const CLINIC_LINE = "Robertsham, Johannesburg";
 
 export const CONSENT_FORMS: Record<CaseType, ConsentFormDef> = {
   IV_DRIP: {
     type: "IV_DRIP",
-    version: "2026-10-08",
+    version: "2026-10-17",
     shortName: "IV drip",
     title: "Informed consent for Intravenous Nutrient Therapy (IVNT) / IV drips",
     treatmentChoice: { label: "Drip prescribed / requested", options: [], freeText: true },
@@ -84,7 +85,7 @@ export const CONSENT_FORMS: Record<CaseType, ConsentFormDef> = {
       "I confirm I am 18 years or older.",
     ],
     consentStatement: (name) =>
-      `I, ${name}, voluntarily consent to the administration of IV Nutrient Therapy by the practitioner at FY Medical Aesthetics (Managed by Lumiere Clinic). I understand that no warranty or guarantee has been made regarding results.`,
+      `I, ${name}, voluntarily consent to the administration of IV Nutrient Therapy by the practitioner at Lumiere Clinic. I understand that no warranty or guarantee has been made regarding results.`,
     postCare: "Keep plaster for 1 hour, increase water intake, report redness/swelling/fever.",
     officeUse: [
       { id: "batchNo", label: "Batch no of drip" },
@@ -95,7 +96,7 @@ export const CONSENT_FORMS: Record<CaseType, ConsentFormDef> = {
 
   AESTHETICS: {
     type: "AESTHETICS",
-    version: "2026-10-08",
+    version: "2026-10-17",
     shortName: "Botox, filler, peel or microneedling",
     title: "Informed consent for medical aesthetic treatments",
     subtitle: "Botox | Dermal fillers | Chemical peels | Microneedling",
@@ -140,7 +141,7 @@ export const CONSENT_FORMS: Record<CaseType, ConsentFormDef> = {
       "I confirm I am 18 years or older.",
     ],
     consentStatement: (name) =>
-      `I, ${name}, voluntarily consent to the above aesthetic treatment at FY Medical Aesthetics (Managed by Lumiere Clinic). I understand risks, benefits and alternatives including no treatment.`,
+      `I, ${name}, voluntarily consent to the above aesthetic treatment at Lumiere Clinic. I understand risks, benefits and alternatives including no treatment.`,
     officeUse: [
       { id: "product", label: "Product / batch" },
       { id: "lot", label: "Lot" },

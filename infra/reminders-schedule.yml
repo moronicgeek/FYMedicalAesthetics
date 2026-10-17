@@ -1,13 +1,13 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
-  FY Medical Aesthetics daily reminders. An EventBridge schedule calls
+  Lumiere Clinic daily reminders. An EventBridge schedule calls
   /api/cron/reminders on the app with "Authorization: Bearer <CRON_SECRET>".
   Deploy in the same region as the app (eu-west-1, Ireland).
 
 Parameters:
   AppUrl:
     Type: String
-    Description: The app's public URL, the same as APP_URL (e.g. https://portal.fymedical.co.za)
+    Description: The app's public URL, the same as APP_URL (e.g. https://portal.lumiereclinic.co.za)
     AllowedPattern: "^https://[^/]+$"
   CronSecret:
     Type: String
@@ -24,7 +24,7 @@ Resources:
   CronConnection:
     Type: AWS::Events::Connection
     Properties:
-      Description: FY Medical cron secret
+      Description: Lumiere Clinic portal cron secret
       AuthorizationType: API_KEY
       AuthParameters:
         ApiKeyAuthParameters:

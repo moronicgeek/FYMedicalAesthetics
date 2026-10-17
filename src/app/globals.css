@@ -1,12 +1,17 @@
 @import "tailwindcss";
 
-/* "Stone & Charcoal": warm greys and charcoal around the clinic's black
-   monochrome logo, with crisp 4px corners. Text colours meet WCAG AAA on the
-   page, card, header and menu-bar backgrounds. */
+/* "Stone & Charcoal" with Lumiere rose: warm greys and charcoal from the
+   clinic's logo, its rose gold as an accent, and crisp 4px corners. Text
+   colours meet WCAG AAA on the page, card, header and menu-bar backgrounds.
+   The logo's own rose (--color-accent) is too light for text, so it is only
+   used for lines and the logo; rose text uses --color-accent-ink. */
 @theme {
   --color-brand: #2b2b2b;
   --color-brand-dark: #111111;
-  --color-brand-soft: #ebe9e6;
+  --color-brand-soft: #f4ece9;
+  --color-accent: #a46a5e;
+  --color-accent-light: #dcaa9b;
+  --color-accent-ink: #6e3e35;
   --color-ink: #1c1c1c;
   --color-muted: #4f4c48;
   --color-line: #d6d3cf;
@@ -59,9 +64,8 @@ body {
 
   .card { background: var(--color-surface); border: 1px solid var(--color-line); border-radius: 4px; padding: 1.5rem; }
   .page-title { font-size: 1.75rem; font-weight: 700; line-height: 1.25; letter-spacing: 0.01em; color: var(--color-ink); }
-  /* Spaced capitals echo the MEDICAL / AESTHETICS lettering in the logo. */
-  .section-title { font-size: 1.05rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: var(--color-ink); }
-  .brand-name { font-size: 0.95rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: var(--color-ink); }
+  /* Spaced capitals echo the CLINIC lettering in the logo. */
+  .section-title { font-size: 1.05rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: var(--color-accent-ink); }
   .muted { color: var(--color-muted); }
 
   .btn {
@@ -109,12 +113,12 @@ body {
   .table td { padding: 0.875rem 0.75rem; border-bottom: 1px solid var(--color-line); vertical-align: top; }
   .table a { color: var(--color-ink); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 
-  /* Charcoal menu bar: light text, white underline on the current page. */
+  /* Charcoal menu bar: light text, rose underline on the current page. */
   .nav-link {
     display: inline-flex; align-items: center; min-height: 3.25rem; padding: 0.75rem 0.9rem 0.5rem;
     font-weight: 700; color: var(--color-nav-text); text-decoration: none; border-bottom: 4px solid transparent;
   }
   .nav-link:hover { background: #3a3a3a; color: white; }
-  .nav-link[aria-current="page"] { color: white; border-bottom-color: white; }
+  .nav-link[aria-current="page"] { color: white; border-bottom-color: var(--color-accent-light); }
   .nav-link:focus-visible { outline-color: white; outline-offset: -3px; }
 }
