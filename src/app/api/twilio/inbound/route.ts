@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { handleDoctorReply } from "@/lib/cases";
+import { appUrl } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ function twiml(message: string) {
 // WhatsApp sender: https://<your domain>/api/twilio/inbound
 export async function POST(req: Request) {
   const params = new URLSearchParams(await req.text());
-  const url = `${(process.env.APP_URL || "").replace(/\/$/, "")}/api/twilio/inbound`;
+  const url = `${appUrl()}/api/twilio/inbound`;
   if (!validSignature(url, params, req.headers.get("x-twilio-signature"))) {
     return new Response("Forbidden", { status: 403 });
   }

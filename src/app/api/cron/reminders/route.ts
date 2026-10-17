@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { sendReminders } from "@/lib/appointments";
+import { audit } from "@/lib/audit";
 import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ export async function GET(req: Request) {
   // Expired sessions and old login attempts are cleaned up on the same schedule.
   await db.session.deleteMany({ where: { expiresAt: { lt: new Date() } } });
   await db.loginAttempt.deleteMany({ where: { createdAt: { lt: new Date(Date.now() - 30 * 86_400_000) } } });
-  await db.auditLog.create({ data: { action: "reminders", entity: "System", entityId: `${result.patientReminders}/${result.appointments}` } });
+  await audit(null, "reminders", "System", `${result.patientReminders}/${result.appointments}`);
   return NextResponse.json(result);
 }
 

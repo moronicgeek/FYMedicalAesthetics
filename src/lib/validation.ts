@@ -1,16 +1,20 @@
 import { z } from "zod";
 
-const required = (label: string) => z.string().trim().min(1, `Please enter ${label}.`);
-const optional = z
+export const required = (label: string) => z.string().trim().min(1, `Please enter ${label}.`);
+export const optional = z
   .string()
   .trim()
   .optional()
   .transform((v) => (v ? v : undefined));
 
-const phone = z
+export const phone = z
   .string()
   .trim()
   .regex(/^\+?[\d\s()-]{7,20}$/, "Please enter a valid phone number.");
+
+export const optionalPhone = z.union([z.literal(""), phone]).optional().transform((v) => v || undefined);
+
+export const isoDate = (message: string) => z.string().regex(/^\d{4}-\d{2}-\d{2}$/, message);
 
 export const SERVICES = [
   "Consultation",
@@ -22,24 +26,6 @@ export const SERVICES = [
   "Follow-up",
   "Other",
 ] as const;
-
-// Injections, peels and laser are done only by doctors, so practitioners
-// don't see these bookings or book them.
-export const DOCTOR_ONLY_SERVICES: readonly string[] = [
-  "Anti-wrinkle injections",
-  "Dermal fillers",
-  "Skin rejuvenation",
-  "Chemical peel",
-  "Laser treatment",
-];
-
-export function canSeeService(role: string, service: string) {
-  return role !== "PRACTITIONER" || !DOCTOR_ONLY_SERVICES.includes(service);
-}
-
-export function servicesFor(role: string) {
-  return SERVICES.filter((s) => canSeeService(role, s));
-}
 
 export const patientSchema = z
   .object({

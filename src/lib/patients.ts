@@ -3,7 +3,8 @@ import type { Patient, Role } from "@prisma/client";
 import { db } from "./db";
 import { blindIndex, decrypt, decryptJson, encryptJson, normaliseEmail, normaliseIdNumber, normalisePhone } from "./crypto";
 import { samePerson, type Identity } from "./patient-match";
-import { canSeeService, type PatientInput } from "./validation";
+import { canSeeService } from "./access";
+import type { PatientInput } from "./validation";
 
 export type PatientRecord = {
   firstName: string;
@@ -72,6 +73,12 @@ export function lookupHashes(record: Pick<PatientRecord, "email" | "phone" | "id
     phoneHash: record.phone ? blindIndex(normalisePhone(record.phone)) : null,
     idNumberHash: record.idNumber ? blindIndex(normaliseIdNumber(record.idNumber)) : null,
   };
+}
+
+// Just the stored details, without the row's id and timestamps: what to
+// change and pass back to updatePatient.
+export function patientRecord(row: Patient): PatientRecord {
+  return decryptJson<PatientRecord>(row.data);
 }
 
 export function decryptPatient(row: Patient): DecryptedPatient {

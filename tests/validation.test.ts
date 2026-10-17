@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { canSeeService, patientSchema, servicesFor } from "../src/lib/validation";
+import { canSeeService, servicesFor } from "../src/lib/access";
+import { patientSchema } from "../src/lib/validation";
 
 const valid = {
   firstName: "Amina",

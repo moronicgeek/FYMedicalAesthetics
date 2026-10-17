@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { canSeeCase, getCase } from "@/lib/cases";
+import { canSeeCase } from "@/lib/access";
+import { getCase } from "@/lib/cases";
 import { SignConsentForm } from "@/components/SignConsentForm";
 
 export const metadata = { title: "Please read and sign" };

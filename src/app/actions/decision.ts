@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
+import { audit } from "@/lib/audit";
 import { findCaseByDecisionToken, recordDecision } from "@/lib/cases";
 
 // Doctors open the link from their WhatsApp message without signing in; the
@@ -12,7 +12,7 @@ export async function doctorDecisionAction(form: FormData) {
   const c = await findCaseByDecisionToken(token);
   if (!c) redirect(`/d/${encodeURIComponent(token)}`);
   if (await recordDecision(c.id, approve, "link")) {
-    await db.auditLog.create({ data: { userId: c.doctorId, action: approve ? "doctor-approve" : "doctor-decline", entity: "TreatmentCase", entityId: c.id } });
+    await audit(c.doctorId ? { id: c.doctorId } : null, approve ? "doctor-approve" : "doctor-decline", "TreatmentCase", c.id);
   }
   redirect(`/d/done?decision=${approve ? "yes" : "no"}&code=${c.code}`);
 }

@@ -4,7 +4,7 @@ import { BookingForm } from "@/components/BookingForm";
 import { listDoctors } from "@/lib/queries";
 import { searchPatients } from "@/lib/patients";
 import { clinicDateString } from "@/lib/time";
-import { servicesFor } from "@/lib/validation";
+import { servicesFor } from "@/lib/access";
 
 export const metadata = { title: "Book appointment" };
 
