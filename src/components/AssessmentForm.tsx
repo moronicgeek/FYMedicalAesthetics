@@ -66,7 +66,7 @@ export function AssessmentForm({
 
       <section className="card space-y-2" aria-labelledby="history-heading">
         <h2 id="history-heading" className="section-title">2. Medical history</h2>
-        <p className="muted">Ask the client each question.</p>
+        <p className="muted">{iv ? "Ask the client each question. Every answer starts on No; change it to Yes where it applies." : "Ask the client each question."}</p>
         <div className="divide-y divide-line">
           {def.questions.map((q) => {
             const name = `q_${q.id}`;
@@ -78,7 +78,7 @@ export function AssessmentForm({
                   {e[name] && <span id={`${name}-error`} className="error-text">{e[name]}</span>}
                   {(["yes", "no"] as const).map((a) => (
                     <label key={a} className="choice">
-                      <input type="radio" name={name} value={a} defaultChecked={v[name] === a} />
+                      <input type="radio" name={name} value={a} defaultChecked={(v[name] ?? (iv ? "no" : undefined)) === a} />
                       <span className="font-bold">{a === "yes" ? "Yes" : "No"}</span>
                     </label>
                   ))}

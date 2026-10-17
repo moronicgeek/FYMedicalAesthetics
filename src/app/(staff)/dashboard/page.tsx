@@ -11,9 +11,9 @@ import { clinicDateString, clinicDayRange, formatDate } from "@/lib/time";
 
 export const metadata = { title: "Today" };
 
-export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string }> }) {
+export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string; closed?: string }> }) {
   const user = await requireUser();
-  const { denied } = await searchParams;
+  const { denied, closed } = await searchParams;
   const today = clinicDateString();
   const { start, end } = clinicDayRange(today);
   const items = await listAppointments(user, {
@@ -31,6 +31,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     <div className="space-y-8">
       <AutoRefresh seconds={15} />
       {denied && <div className="alert alert-error" role="alert">You don&rsquo;t have access to that page.</div>}
+      {closed && <div className="alert alert-success" role="status">Case closed and signed.</div>}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="muted">{formatDate(new Date())}</p>

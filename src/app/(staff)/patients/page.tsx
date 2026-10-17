@@ -16,7 +16,10 @@ export default async function PatientsPage({ searchParams }: { searchParams: Pro
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="page-title">Patients</h1>
-        <Link href="/intake" className="btn btn-primary">Add a new patient</Link>
+        <div className="flex flex-wrap gap-3">
+          {user.role === "ADMIN" && <a href="/patients/export.csv" className="btn btn-secondary" download>Download spreadsheet</a>}
+          <Link href="/intake" className="btn btn-primary">Add a new patient</Link>
+        </div>
       </div>
       <form role="search" className="card flex flex-col gap-3 sm:flex-row sm:items-end">
         <label className="field flex-1" htmlFor="q">
