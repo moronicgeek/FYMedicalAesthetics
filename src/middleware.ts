@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { contentSecurityPolicy } from "./lib/csp";
 import { KIOSK_COOKIE } from "./lib/kiosk";
 
 // Cheap first gate: no session cookie means straight to sign-in. Every page
@@ -21,7 +22,14 @@ export function middleware(req: NextRequest) {
   if (req.cookies.has(KIOSK_COOKIE) && !pathname.startsWith("/kiosk") && !pathname.startsWith("/d/") && pathname !== "/login" && req.method === "GET") {
     return redirectTo(req, "/kiosk/checkin");
   }
-  return NextResponse.next();
+  // A fresh nonce per page; Next.js reads it from the request's CSP header
+  // and puts it on the scripts it renders.
+  const csp = contentSecurityPolicy(btoa(crypto.randomUUID()));
+  const headers = new Headers(req.headers);
+  headers.set("Content-Security-Policy", csp);
+  const res = NextResponse.next({ request: { headers } });
+  res.headers.set("Content-Security-Policy", csp);
+  return res;
 }
 
 export const config = { matcher: ["/((?!_next|favicon.ico|api/).*)"] };

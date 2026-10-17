@@ -5,7 +5,9 @@ import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import type { Role, User } from "@prisma/client";
 import { db } from "./db";
+import { ipFromForwardedFor } from "./client-ip";
 import { blindIndex, normaliseEmail, randomToken, sha256 } from "./crypto";
+import { KIOSK_COOKIE } from "./kiosk";
 
 export const SESSION_COOKIE = "fy_session";
 const SESSION_HOURS = 8;
@@ -27,7 +29,7 @@ export async function hashPassword(password: string) {
 
 export async function clientIp(): Promise<string | null> {
   const h = await headers();
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip");
+  return ipFromForwardedFor(h.get("x-forwarded-for")) ?? h.get("x-real-ip");
 }
 
 export type LoginResult = { ok: true; userId: string } | { ok: false; error: string };
@@ -92,6 +94,9 @@ export async function logout() {
     await db.session.deleteMany({ where: { tokenHash: sha256(token) } });
   }
   store.delete(SESSION_COOKIE);
+  // A device left in check-in mode is unlocked too, so the next person to sign
+  // in on it isn't sent straight to the check-in screen.
+  store.delete(KIOSK_COOKIE);
 }
 
 export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {

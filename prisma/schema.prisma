@@ -178,6 +178,10 @@ model TreatmentCase {
   // Empty string encrypted when none was chosen; null on older rows until the
   // overview fills it in.
   treatment             String?
+  // Encrypted name, treatment and signing time: all the waiting lists show, so
+  // they don't fetch and decrypt whole signed forms every few seconds. Null on
+  // older rows until a list fills it in.
+  summary               String?
   consentEmailedAt      DateTime?
   practitionerId        String?
   practitioner          User?        @relation("CasePractitioner", fields: [practitionerId], references: [id])

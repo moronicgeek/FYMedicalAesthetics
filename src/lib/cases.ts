@@ -41,10 +41,39 @@ export const OPEN_STATUSES: CaseStatus[] = ["QUEUED", "ASSESSMENT", "AWAITING_SI
 
 const DECISION_LINK_HOURS = 4;
 
+// What the waiting lists show about a case.
+export type CaseSummary = { patient: { firstName: string; lastName: string }; treatment?: string; signedAt?: string };
+
+function summaryOf(record: CaseRecord): CaseSummary {
+  const { firstName, lastName } = record.patient;
+  return { patient: { firstName, lastName }, treatment: record.treatment, signedAt: record.signedAt };
+}
+
 // Every write of the form also refreshes the separately encrypted treatment
-// column the admin overview reads.
+// column the admin overview reads, and the summary the waiting lists read.
 export function consentColumns(record: CaseRecord) {
-  return { consent: encryptJson(record), treatment: encrypt(record.treatment ?? "") };
+  return { consent: encryptJson(record), treatment: encrypt(record.treatment ?? ""), summary: encryptJson(summaryOf(record)) };
+}
+
+const LIST_COLUMNS = { id: true, code: true, type: true, status: true, outcome: true, patientId: true, createdAt: true, summary: true } as const;
+
+export type CaseListItem = Omit<Prisma.TreatmentCaseGetPayload<{ select: typeof LIST_COLUMNS }>, "summary"> & { consent: CaseSummary };
+
+// Cases for the waiting lists, which refresh every few seconds: only the
+// columns they show, so signatures and medical answers stay in the database.
+// Cases from before the summary column get it filled in the first time.
+export async function listCases(where: Prisma.TreatmentCaseWhereInput): Promise<CaseListItem[]> {
+  const rows = await db.treatmentCase.findMany({ where, select: LIST_COLUMNS, orderBy: { createdAt: "asc" } });
+  const missing = rows.filter((r) => !r.summary).map((r) => r.id);
+  const filled = new Map<string, CaseSummary>();
+  if (missing.length) {
+    for (const row of await db.treatmentCase.findMany({ where: { id: { in: missing } }, select: { id: true, consent: true } })) {
+      const summary = summaryOf(decryptJson<CaseRecord>(row.consent));
+      await db.treatmentCase.update({ where: { id: row.id }, data: { summary: encryptJson(summary) } });
+      filled.set(row.id, summary);
+    }
+  }
+  return rows.map(({ summary, ...row }) => ({ ...row, consent: summary ? decryptJson<CaseSummary>(summary) : filled.get(row.id)! }));
 }
 
 async function uniqueCode() {
@@ -284,7 +313,7 @@ export async function emailConsent(caseId: string) {
   return result;
 }
 
-export type DecryptedCase = Omit<TreatmentCase, "consent" | "treatment" | "preVitals" | "postVitals" | "officeUse" | "closingNotes" | "practitionerSignature" | "doctorDecisionNote"> & {
+export type DecryptedCase = Omit<TreatmentCase, "consent" | "treatment" | "summary" | "preVitals" | "postVitals" | "officeUse" | "closingNotes" | "practitionerSignature" | "doctorDecisionNote"> & {
   doctorDecisionNote?: string;
   consent: CaseRecord;
   preVitals?: Vitals;
@@ -294,7 +323,7 @@ export type DecryptedCase = Omit<TreatmentCase, "consent" | "treatment" | "preVi
   practitionerSignature?: string;
 };
 
-export function decryptCase({ treatment: _treatment, ...row }: TreatmentCase): DecryptedCase {
+export function decryptCase({ treatment: _treatment, summary: _summary, ...row }: TreatmentCase): DecryptedCase {
   return {
     ...row,
     consent: decryptJson<CaseRecord>(row.consent),
@@ -446,7 +475,8 @@ export async function handleDoctorReply(fromPhone: string, body: string): Promis
   if (pending.length === 0) return reply.code ? `No case #${reply.code} is waiting for your approval.` : "No case is waiting for your approval.";
   if (pending.length > 1) return `More than one case is waiting. Please reply with the number, e.g. YES ${pending[0].code}.`;
   const c = pending[0];
-  await recordDecision(c.id, reply.approve, "WhatsApp");
+  // Another answer (the link, or a second message) may have got there first.
+  if (!(await recordDecision(c.id, reply.approve, "WhatsApp"))) return `#${c.code} has already been decided. Please contact the clinic if you need to change it.`;
   await db.auditLog.create({ data: { userId: doctors[0].id, action: reply.approve ? "doctor-approve" : "doctor-decline", entity: "TreatmentCase", entityId: c.id } });
   return reply.approve ? `Thank you. #${c.code} approved; the patient will sign and the practitioner can proceed.` : `Thank you. #${c.code} declined; the practitioner will not proceed.`;
 }
