@@ -8,6 +8,7 @@ import { audit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { decrypt } from "@/lib/crypto";
 import { encryptAppointmentFields, sendBookingConfirmation } from "@/lib/appointments";
+import { canSeePatient } from "@/lib/patients";
 import { zonedToUtc } from "@/lib/time";
 import { appointmentSchema, canSeeService, fieldErrors, formToObject, type FieldErrors } from "@/lib/validation";
 
@@ -30,7 +31,7 @@ export async function bookAppointmentAction(_prev: AppointmentFormState, form: F
     db.patient.findUnique({ where: { id: input.patientId }, select: { id: true } }),
     db.user.findFirst({ where: { id: input.doctorId, role: "DOCTOR", active: true } }),
   ]);
-  if (!patient) return { errors: { patientId: "Please choose a patient." }, values };
+  if (!patient || !(await canSeePatient(user.role, patient.id))) return { errors: { patientId: "Please choose a patient." }, values };
   if (!canSeeService(user.role, input.service)) return { errors: { service: "Only reception or a doctor can book this treatment." }, values };
   if (!doctor) return { errors: { doctorId: "Please choose a doctor." }, values };
 

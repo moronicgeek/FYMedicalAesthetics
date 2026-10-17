@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { getPatient } from "@/lib/patients";
+import { canSeePatient, getPatient } from "@/lib/patients";
 import { PatientForm } from "@/components/PatientForm";
 
 export const metadata = { title: "Edit patient" };
@@ -11,7 +11,7 @@ export default async function EditPatient({ params }: { params: Promise<{ id: st
   const user = await requireUser();
   const { id } = await params;
   const p = await getPatient(id);
-  if (!p) notFound();
+  if (!p || !(await canSeePatient(user.role, id))) notFound();
   await audit(user, "view-edit", "Patient", id);
 
   const initial: Record<string, string> = {

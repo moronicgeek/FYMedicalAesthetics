@@ -11,7 +11,7 @@ export const metadata = { title: "Book appointment" };
 export default async function NewAppointment({ searchParams }: { searchParams: Promise<{ patientId?: string }> }) {
   const user = await requireUser();
   const { patientId } = await searchParams;
-  const [patients, doctors] = await Promise.all([searchPatients("", 5000), listDoctors()]);
+  const [patients, doctors] = await Promise.all([searchPatients("", user.role, 5000), listDoctors()]);
   const patientOptions = patients
     .map((p) => ({ value: p.id, label: `${p.lastName}, ${p.firstName} (born ${p.dateOfBirth})` }))
     .sort((a, b) => a.label.localeCompare(b.label));

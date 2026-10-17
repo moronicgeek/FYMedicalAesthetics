@@ -4,7 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { getIdPhoto, signedConsents } from "@/lib/cases";
 import { CONSENT_FORMS } from "@/lib/consent-forms";
-import { getPatient } from "@/lib/patients";
+import { canSeePatient, getPatient } from "@/lib/patients";
 import { listAppointments } from "@/lib/queries";
 import { AppointmentList } from "@/components/AppointmentList";
 import { ageFrom, formatDateTime } from "@/lib/time";
@@ -28,7 +28,7 @@ export default async function PatientPage({ params, searchParams }: { params: Pr
   const { id } = await params;
   const flags = await searchParams;
   const patient = await getPatient(id);
-  if (!patient) notFound();
+  if (!patient || !(await canSeePatient(user.role, id))) notFound();
   await audit(user, "view", "Patient", id);
 
   const now = new Date();

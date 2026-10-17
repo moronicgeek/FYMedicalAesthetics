@@ -9,7 +9,12 @@ import { blindIndex, normaliseEmail, randomToken, sha256 } from "./crypto";
 
 export const SESSION_COOKIE = "fy_session";
 const SESSION_HOURS = 8;
-const MAX_FAILED_ATTEMPTS = 5;
+// Failed sign-ins allowed within LOCKOUT_MINUTES: for one email from one IP
+// address, and for one email from anywhere. The per-address limit means a
+// stranger guessing a doctor's password locks only themselves out; the overall
+// one still stops guessing spread over many addresses.
+const MAX_FAILED_FROM_ONE_ADDRESS = 5;
+const MAX_FAILED_FOR_EMAIL = 20;
 const LOCKOUT_MINUTES = 15;
 
 let dummyHash: string | undefined;
@@ -30,12 +35,21 @@ export type LoginResult = { ok: true; userId: string } | { ok: false; error: str
 export async function login(emailInput: string, password: string): Promise<LoginResult> {
   const email = normaliseEmail(emailInput);
   const emailHash = blindIndex(email);
+  const ipAddress = await clientIp();
   const since = new Date(Date.now() - LOCKOUT_MINUTES * 60_000);
 
-  const recentFailures = await db.loginAttempt.count({
-    where: { emailHash, success: false, createdAt: { gte: since } },
-  });
-  if (recentFailures >= MAX_FAILED_ATTEMPTS) {
+  // Recorded as a failure before counting, so many attempts sent at once can't
+  // all slip in under the limit.
+  const attempt = await db.loginAttempt.create({ data: { emailHash, ipAddress, success: false } });
+  const failed = { emailHash, success: false, createdAt: { gte: since } };
+  const [fromAddress, overall] = await Promise.all([
+    db.loginAttempt.count({ where: { ...failed, ipAddress } }),
+    db.loginAttempt.count({ where: failed }),
+  ]);
+  if (fromAddress > MAX_FAILED_FROM_ONE_ADDRESS || overall > MAX_FAILED_FOR_EMAIL) {
+    // A refused attempt isn't counted, so one address can't push the account
+    // over the overall limit on its own.
+    await db.loginAttempt.delete({ where: { id: attempt.id } });
     return { ok: false, error: `Too many attempts. Please wait ${LOCKOUT_MINUTES} minutes and try again.` };
   }
 
@@ -45,11 +59,10 @@ export async function login(emailInput: string, password: string): Promise<Login
   const valid = await bcrypt.compare(password, user?.passwordHash ?? dummyHash);
 
   if (!user || !user.active || !valid) {
-    await db.loginAttempt.create({ data: { emailHash, success: false } });
     return { ok: false, error: "The email or password is not correct." };
   }
 
-  await db.loginAttempt.create({ data: { emailHash, success: true } });
+  await db.loginAttempt.update({ where: { id: attempt.id }, data: { success: true } });
   await startSession(user.id);
   return { ok: true, userId: user.id };
 }
