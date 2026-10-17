@@ -2,6 +2,7 @@ import "server-only";
 import type { Patient } from "@prisma/client";
 import { db } from "./db";
 import { blindIndex, decryptJson, encryptJson, normaliseEmail, normaliseIdNumber, normalisePhone } from "./crypto";
+import { samePerson, type Identity } from "./patient-match";
 import type { PatientInput } from "./validation";
 
 export type PatientRecord = {
@@ -96,8 +97,8 @@ export async function getPatient(id: string) {
   return row ? decryptPatient(row) : null;
 }
 
-// Finds an existing patient by exact email, phone or ID number match, so
-// reception can avoid creating duplicate records when someone returns.
+// Finds a patient by exact email, phone or ID number, for staff searching the
+// patient list. Use findSamePatient before saving a form to a record.
 export async function findExistingPatient(record: Pick<PatientRecord, "email" | "phone" | "idNumber">) {
   const hashes = lookupHashes(record);
   const or = [
@@ -107,6 +108,22 @@ export async function findExistingPatient(record: Pick<PatientRecord, "email" | 
   ].filter(Boolean) as object[];
   if (or.length === 0) return null;
   return db.patient.findFirst({ where: { OR: or } });
+}
+
+// Finds the stored record for a returning patient: one sharing their ID
+// number, email or phone that is also the same person by name and date of
+// birth (see samePerson). An ID number match wins over a contact match.
+export async function findSamePatient(record: Identity & Pick<PatientRecord, "email" | "phone">) {
+  const hashes = lookupHashes(record);
+  const or = [
+    hashes.idNumberHash && { idNumberHash: hashes.idNumberHash },
+    hashes.emailHash && { emailHash: hashes.emailHash },
+    hashes.phoneHash && { phoneHash: hashes.phoneHash },
+  ].filter(Boolean) as object[];
+  if (or.length === 0) return null;
+  const rows = await db.patient.findMany({ where: { OR: or }, orderBy: { updatedAt: "desc" } });
+  const same = rows.filter((row) => samePerson(decryptPatient(row), record));
+  return same.find((row) => hashes.idNumberHash && row.idNumberHash === hashes.idNumberHash) ?? same[0] ?? null;
 }
 
 // Names are encrypted, so text search decrypts and filters in memory. That's

@@ -4,7 +4,8 @@ import type { CaseOutcome, CaseStatus, Prisma, TreatmentCase, User } from "@pris
 import { db } from "./db";
 import { decryptJson, encryptJson, decrypt, encrypt, normalisePhone, randomToken, sha256 } from "./crypto";
 import { CONSENT_FORMS, type CaseType } from "./consent-forms";
-import { createPatient, decryptPatient, findExistingPatient, updatePatient, type PatientRecord } from "./patients";
+import { createPatient, decryptPatient, findSamePatient, updatePatient, type PatientRecord } from "./patients";
+import { samePerson } from "./patient-match";
 import type { SessionUser } from "./auth";
 import { clinicName, sendEmail, sendWhatsApp, type WhatsAppMessage } from "./notify";
 import { clinicInbox, getVitalRanges } from "./settings";
@@ -56,12 +57,14 @@ async function uniqueCode() {
 }
 
 // Creates or updates the patient's record from what was captured for this
-// visit. A returning patient is matched by ID number, email or phone.
-async function savePatientFromRecord(record: CaseRecord, knownPatientId: string | null, recordedBy?: string) {
+// visit. A returning patient is matched by findSamePatient. With `verify`,
+// the record the case is linked to is only updated if the details are still
+// the same person: a client filling in their own form on the tablet could have
+// been checked in under someone else's ID number.
+async function savePatientFromRecord(record: CaseRecord, knownPatientId: string | null, opts: { recordedBy?: string; verify?: boolean } = {}) {
   const p = record.patient;
-  const existing = knownPatientId
-    ? await db.patient.findUnique({ where: { id: knownPatientId } })
-    : await findExistingPatient({ email: p.email, phone: p.phone, idNumber: p.idNumber });
+  const linked = knownPatientId ? await db.patient.findUnique({ where: { id: knownPatientId } }) : null;
+  const existing = linked && (!opts.verify || samePerson(decryptPatient(linked), p)) ? linked : await findSamePatient(p);
   if (existing) {
     const prev = decryptPatient(existing);
     const merged: PatientRecord = {
@@ -99,7 +102,7 @@ async function savePatientFromRecord(record: CaseRecord, knownPatientId: string 
       dataProcessing: true,
       accuracy: true,
       marketing: false,
-      signedName: record.signedName ?? `${p.firstName} ${p.lastName} (given verbally${recordedBy ? ` to ${recordedBy}` : ""})`,
+      signedName: record.signedName ?? `${p.firstName} ${p.lastName} (given verbally${opts.recordedBy ? ` to ${opts.recordedBy}` : ""})`,
       signedAt: record.signedAt ?? new Date().toISOString(),
     },
   });
@@ -120,7 +123,7 @@ export async function createCaseFromConsent(consent: ConsentRecord) {
 export async function completeClientForm(caseId: string, consent: ConsentRecord) {
   const row = await db.treatmentCase.findUnique({ where: { id: caseId } });
   if (!row || row.status !== "QUEUED" || row.type === "IV_DRIP") return false;
-  const patientId = await savePatientFromRecord(consent, row.patientId);
+  const patientId = await savePatientFromRecord(consent, row.patientId, { verify: true });
   const updated = await db.treatmentCase.updateMany({
     where: { id: caseId, status: "QUEUED" },
     data: { patientId, ...consentColumns(consent), status: "CONSENTED" },
@@ -161,7 +164,7 @@ export type CheckIn = {
 // waits for a practitioner. A returning patient is linked straight away so
 // their details can be filled in for the practitioner.
 export async function checkInCase(input: CheckIn, startedBy?: Pick<User, "id">) {
-  const existing = await findExistingPatient({ idNumber: input.idNumber, phone: "" });
+  const existing = await findSamePatient({ ...input, dateOfBirth: "", email: "" });
   const record: CaseRecord = {
     formType: input.type,
     formVersion: CONSENT_FORMS[input.type].version,
@@ -200,7 +203,7 @@ export async function cancelCase(caseId: string) {
 // are recorded next (recordPreVitals); other treatments go straight to signing.
 export async function saveAssessment(caseId: string, record: CaseRecord, idPhoto: string | undefined, practitioner: Pick<SessionUser, "id" | "name">) {
   const row = await db.treatmentCase.findUniqueOrThrow({ where: { id: caseId } });
-  const patientId = await savePatientFromRecord(record, row.patientId, practitioner.name);
+  const patientId = await savePatientFromRecord(record, row.patientId, { recordedBy: practitioner.name });
   if (idPhoto) await db.patient.update({ where: { id: patientId }, data: { idPhoto: encrypt(idPhoto) } });
   await db.treatmentCase.update({
     where: { id: caseId },
