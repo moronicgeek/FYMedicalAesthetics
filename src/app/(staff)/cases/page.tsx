@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/lib/auth";
-import { caseStatusLabel, listCases, OPEN_STATUSES, OUTCOME_LABEL, visibleCasesWhere } from "@/lib/cases";
+import { visibleCasesWhere } from "@/lib/access";
+import { caseStatusLabel, listCases, OPEN_STATUSES, OUTCOME_LABEL } from "@/lib/cases";
 import { CONSENT_FORMS } from "@/lib/consent-forms";
 import { clinicDateString, clinicDayRange, formatTime } from "@/lib/time";
 import { AutoRefresh } from "@/components/AutoRefresh";

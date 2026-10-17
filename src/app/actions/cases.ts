@@ -2,16 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
+import type { User } from "@prisma/client";
 import { z } from "zod";
+import { canSeeCase, canTreat } from "@/lib/access";
 import { requireUser, type SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { CONSENT_FORMS, isCaseType } from "@/lib/consent-forms";
-import { cookies } from "next/headers";
 import {
   cancelCase,
-  canSeeCase,
-  canTreat,
   checkInCase,
   completeClientForm,
   closeCase,
@@ -30,11 +29,11 @@ import {
   type OfficeUse,
 } from "@/lib/cases";
 import type { ConsentFormDef } from "@/lib/consent-forms";
-import { KIOSK_COOKIE } from "@/lib/kiosk";
 import { getIvDripNames } from "@/lib/settings";
+import { lockTablet } from "@/lib/tablet";
 import { validIdPhoto, validSignature } from "@/lib/signature";
-import { formToObject, type FieldErrors } from "@/lib/validation";
-import { parseVitals } from "@/lib/vitals";
+import { fieldErrors, formToObject, isoDate, optional, optionalPhone, phone, required, type FieldErrors } from "@/lib/validation";
+import { parseVitals, type Vitals } from "@/lib/vitals";
 
 export type ConsentFormState = { errors?: FieldErrors; values?: Record<string, string> };
 
@@ -73,10 +72,10 @@ async function parseDrip(values: Record<string, string>, errors: FieldErrors) {
 }
 
 const patientDetails = z.object({
-  firstName: z.string().trim().min(1, "Please enter your first name."),
-  lastName: z.string().trim().min(1, "Please enter your surname."),
-  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Please enter your date of birth."),
-  phone: z.string().trim().regex(/^\+?[\d\s()-]{7,20}$/, "Please enter a valid phone number."),
+  firstName: required("your first name"),
+  lastName: required("your surname"),
+  dateOfBirth: isoDate("Please enter your date of birth."),
+  phone,
   email: z.email("Please enter a valid email address. We'll send your signed form here."),
   idNumber: z.string().trim().optional(),
   signedName: z.string().trim().min(1, "Please type your full name."),
@@ -91,7 +90,7 @@ export async function submitConsentAction(_prev: ConsentFormState, form: FormDat
   const errors: FieldErrors = {};
 
   const parsed = patientDetails.safeParse(values);
-  if (!parsed.success) for (const i of parsed.error.issues) errors[String(i.path[0])] ??= i.message;
+  if (!parsed.success) Object.assign(errors, fieldErrors(parsed.error));
 
   const answers = parseHistory(def, values, errors);
   checkAcknowledgements(def, values, errors);
@@ -157,16 +156,28 @@ export async function preVitalsAction(_prev: StepState, form: FormData): Promise
   const c = await loadOpenCase(values.caseId, user);
   if (c.type !== "IV_DRIP" || c.status !== "CONSENTED") return { errors: { form: "This step has already been done." }, values };
   const { vitals, errors } = parseVitals(values);
-  const doctor = await db.user.findFirst({ where: { id: values.doctorId, role: "DOCTOR", active: true } });
   const allErrors: FieldErrors = { ...(errors ?? {}) };
-  if (!doctor) allErrors.doctorId = "Please choose the doctor to approve.";
-  else if (!doctor.phone) allErrors.doctorId = `${doctor.name} has no mobile number saved. An administrator can add it on the Staff page.`;
-  if (!vitals || Object.keys(allErrors).length) return { errors: allErrors, values };
+  const doctor = await approvingDoctor(values.doctorId, allErrors);
+  if (!vitals || !doctor || Object.keys(allErrors).length) return { errors: allErrors, values };
+  return sendVitals(user, c.id, vitals, doctor);
+}
 
-  const result = await recordPreVitals(c.id, user.id, vitals, doctor!);
-  if (result.status !== "already-done") await audit(user, result.status === "referred" ? "vitals-out-of-range" : "vitals-sent-to-doctor", "TreatmentCase", c.id);
-  revalidatePath(`/cases/${c.id}`);
-  redirect(`/cases/${c.id}${result.status === "sent" && !result.delivered ? "?undelivered=1" : ""}`);
+// The doctor chosen to approve an IV drip. They need a mobile number, since
+// the request goes to them on WhatsApp.
+async function approvingDoctor(doctorId: string | undefined, errors: FieldErrors) {
+  const doctor = doctorId ? await db.user.findFirst({ where: { id: doctorId, role: "DOCTOR", active: true } }) : null;
+  if (!doctor) errors.doctorId = "Please choose the doctor to approve.";
+  else if (!doctor.phone) errors.doctorId = `${doctor.name} has no mobile number saved. An administrator can add it on the Staff page.`;
+  return doctor;
+}
+
+// Records the vitals before a drip, which sends them to the doctor (or refers
+// the patient when a reading is out of range), and goes back to the case.
+async function sendVitals(user: SessionUser, caseId: string, vitals: Vitals, doctor: Pick<User, "id" | "phone">): Promise<never> {
+  const result = await recordPreVitals(caseId, user.id, vitals, doctor);
+  if (result.status !== "already-done") await audit(user, result.status === "referred" ? "vitals-out-of-range" : "vitals-sent-to-doctor", "TreatmentCase", caseId);
+  revalidatePath(`/cases/${caseId}`);
+  redirect(`/cases/${caseId}${result.status === "sent" && !result.delivered ? "?undelivered=1" : ""}`);
 }
 
 export async function resendDoctorAction(form: FormData) {
@@ -246,15 +257,12 @@ export async function resendConsentAction(form: FormData) {
 
 // --- Practitioner-led intake ----------------------------------------------
 
-const phoneNumber = z.string().trim().regex(/^\+?[\d\s()-]{7,20}$/, "Please enter a valid phone number.");
-const optionalPhone = z.union([z.literal(""), phoneNumber]).optional().transform((v) => v || undefined);
-
 const checkInSchema = z.object({
-  firstName: z.string().trim().min(1, "Please enter the first name."),
-  lastName: z.string().trim().min(1, "Please enter the surname."),
+  firstName: required("the first name"),
+  lastName: required("the surname"),
   idNumber: z.string().trim().min(5, "Please enter the ID or passport number."),
-  phone: phoneNumber,
-  emergencyName: z.string().trim().optional().transform((v) => v || undefined),
+  phone,
+  emergencyName: optional,
   emergencyPhone: optionalPhone,
 });
 
@@ -263,7 +271,7 @@ export async function checkInAction(_prev: ConsentFormState, form: FormData): Pr
   const values = formToObject(form);
   const errors: FieldErrors = {};
   const parsed = checkInSchema.safeParse(values);
-  if (!parsed.success) for (const i of parsed.error.issues) errors[String(i.path[0])] ??= i.message;
+  if (!parsed.success) Object.assign(errors, fieldErrors(parsed.error));
   if (!values.formType || !isCaseType(values.formType)) errors.formType = "Please choose the treatment.";
   if (Object.keys(errors).length || !parsed.success) return { errors, values };
 
@@ -289,10 +297,6 @@ export async function checkInAction(_prev: ConsentFormState, form: FormData): Pr
   await lockTablet();
   await audit(user, "handed-to-patient", "TreatmentCase", created.id);
   redirect(`/kiosk/form/${created.id}`);
-}
-
-async function lockTablet() {
-  (await cookies()).set(KIOSK_COOKIE, "1", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
 }
 
 // Reception hands the tablet to the client to check themselves in.
@@ -333,12 +337,9 @@ export async function cancelCaseAction(form: FormData) {
   redirect("/cases");
 }
 
-const assessmentDetails = z.object({
-  firstName: z.string().trim().min(1, "Please enter the first name."),
-  lastName: z.string().trim().min(1, "Please enter the surname."),
-  idNumber: z.string().trim().min(5, "Please enter the ID or passport number."),
-  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Please enter the date of birth."),
-  phone: phoneNumber,
+// The check-in details plus what the practitioner adds.
+const assessmentDetails = checkInSchema.pick({ firstName: true, lastName: true, idNumber: true, phone: true }).extend({
+  dateOfBirth: isoDate("Please enter the date of birth."),
   email: z.email("Please enter a valid email address. The signed form is sent here."),
 });
 
@@ -352,7 +353,7 @@ export async function assessmentAction(_prev: StepState, form: FormData): Promis
   const errors: FieldErrors = {};
 
   const parsed = assessmentDetails.safeParse(values);
-  if (!parsed.success) for (const i of parsed.error.issues) errors[String(i.path[0])] ??= i.message;
+  if (!parsed.success) Object.assign(errors, fieldErrors(parsed.error));
   const answers = parseHistory(def, values, errors);
   const iv = c.type === "IV_DRIP";
   const treatment = iv ? await parseDrip(values, errors) : parseTreatment(def, values, errors);
@@ -361,9 +362,7 @@ export async function assessmentAction(_prev: StepState, form: FormData): Promis
 
   const vitalsResult = iv ? parseVitals(values) : {};
   if (vitalsResult.errors) Object.assign(errors, vitalsResult.errors);
-  const doctor = iv ? await db.user.findFirst({ where: { id: values.doctorId, role: "DOCTOR", active: true } }) : null;
-  if (iv && !doctor) errors.doctorId = "Please choose the doctor to approve.";
-  else if (iv && !doctor!.phone) errors.doctorId = `${doctor!.name} has no mobile number saved. An administrator can add it on the Staff page.`;
+  const doctor = iv ? await approvingDoctor(values.doctorId, errors) : null;
 
   if (Object.keys(errors).length || !parsed.success) {
     // The photo is kept in the browser; don't send it back with the form.
@@ -391,10 +390,7 @@ export async function assessmentAction(_prev: StepState, form: FormData): Promis
   await audit(user, "assessment-saved", "TreatmentCase", c.id);
 
   if (!iv) redirect(`/cases/${c.id}`);
-  const result = await recordPreVitals(c.id, user.id, vitalsResult.vitals!, doctor!);
-  if (result.status !== "already-done") await audit(user, result.status === "referred" ? "vitals-out-of-range" : "vitals-sent-to-doctor", "TreatmentCase", c.id);
-  revalidatePath(`/cases/${c.id}`);
-  redirect(`/cases/${c.id}${result.status === "sent" && !result.delivered ? "?undelivered=1" : ""}`);
+  return sendVitals(user, c.id, vitalsResult.vitals!, doctor!);
 }
 
 // Locks the tablet to this patient's signing screen. A staff member signs in

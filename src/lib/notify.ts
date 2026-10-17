@@ -106,3 +106,9 @@ export function anySent(results: SendResult[]) {
 export function clinicName() {
   return CLINIC();
 }
+
+// The app's public address, for links in messages and checking Twilio's
+// signatures (which cover the full URL).
+export function appUrl() {
+  return (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
+}

@@ -5,7 +5,7 @@ import { db } from "./db";
 import { decryptAppointment } from "./appointments";
 import { decryptPatient, displayName } from "./patients";
 import type { AppointmentItem } from "@/components/AppointmentList";
-import { canSeeService } from "./validation";
+import { canSeeService } from "./access";
 
 export async function listAppointments(user: SessionUser, where: Prisma.AppointmentWhereInput, order: "asc" | "desc" = "asc"): Promise<AppointmentItem[]> {
   const rows = await db.appointment.findMany({

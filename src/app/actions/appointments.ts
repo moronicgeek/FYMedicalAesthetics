@@ -10,7 +10,8 @@ import { decrypt } from "@/lib/crypto";
 import { encryptAppointmentFields, sendBookingConfirmation } from "@/lib/appointments";
 import { canSeePatient } from "@/lib/patients";
 import { zonedToUtc } from "@/lib/time";
-import { appointmentSchema, canSeeService, fieldErrors, formToObject, type FieldErrors } from "@/lib/validation";
+import { canSeeService } from "@/lib/access";
+import { appointmentSchema, fieldErrors, formToObject, type FieldErrors } from "@/lib/validation";
 
 export type AppointmentFormState = { errors?: FieldErrors; values?: Record<string, string> };
 

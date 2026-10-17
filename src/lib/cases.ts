@@ -4,14 +4,15 @@ import type { CaseOutcome, CaseStatus, Prisma, TreatmentCase, User } from "@pris
 import { db } from "./db";
 import { decryptJson, encryptJson, decrypt, encrypt, normalisePhone, randomToken, sha256 } from "./crypto";
 import { CONSENT_FORMS, type CaseType } from "./consent-forms";
-import { createPatient, decryptPatient, findSamePatient, updatePatient, type PatientRecord } from "./patients";
-import { samePerson } from "./patient-match";
+import { createPatient, findSamePatient, patientRecord, updatePatient } from "./patients";
+import { mergePatientRecord, samePerson } from "./patient-match";
 import type { SessionUser } from "./auth";
-import { clinicName, sendEmail, sendWhatsApp, type WhatsAppMessage } from "./notify";
+import { appUrl, clinicName, sendEmail, sendWhatsApp, type WhatsAppMessage } from "./notify";
 import { clinicInbox, getVitalRanges } from "./settings";
 import { checkVitals, formatVitals, type Vitals } from "./vitals";
 import { ageFrom } from "./time";
 import { parseDoctorReply } from "./doctor-reply";
+import { audit } from "./audit";
 
 // Everything recorded about the visit. At check-in only the names, ID number
 // and treatment are known (the other patient fields are empty); the
@@ -93,22 +94,25 @@ async function uniqueCode() {
 async function savePatientFromRecord(record: CaseRecord, knownPatientId: string | null, opts: { recordedBy?: string; verify?: boolean } = {}) {
   const p = record.patient;
   const linked = knownPatientId ? await db.patient.findUnique({ where: { id: knownPatientId } }) : null;
-  const existing = linked && (!opts.verify || samePerson(decryptPatient(linked), p)) ? linked : await findSamePatient(p);
+  const existing = linked && (!opts.verify || samePerson(patientRecord(linked), p)) ? linked : await findSamePatient(p);
   if (existing) {
-    const prev = decryptPatient(existing);
-    const merged: PatientRecord = {
-      ...prev,
-      firstName: p.firstName,
-      lastName: p.lastName,
-      dateOfBirth: p.dateOfBirth,
-      phone: p.phone,
-      email: p.email,
-      idNumber: p.idNumber || prev.idNumber,
-      emergencyContact: record.emergency.name || record.emergency.phone ? record.emergency : prev.emergencyContact,
-      medical: { ...prev.medical, medications: record.details.medications || prev.medical.medications },
-    };
-    const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = merged as PatientRecord & { id?: string; createdAt?: Date; updatedAt?: Date };
-    await updatePatient(existing.id, rest);
+    // This visit's details replace the stored ones; anything left blank keeps
+    // what is on file.
+    const prev = patientRecord(existing);
+    await updatePatient(
+      existing.id,
+      mergePatientRecord(prev, {
+        ...prev,
+        firstName: p.firstName,
+        lastName: p.lastName,
+        dateOfBirth: p.dateOfBirth,
+        phone: p.phone,
+        email: p.email,
+        idNumber: p.idNumber,
+        emergencyContact: record.emergency,
+        medical: { ...prev.medical, medications: record.details.medications },
+      }),
+    );
     return existing.id;
   }
   const created = await createPatient({
@@ -158,22 +162,6 @@ export async function completeClientForm(caseId: string, consent: ConsentRecord)
     data: { patientId, ...consentColumns(consent), status: "CONSENTED" },
   });
   return updated.count === 1;
-}
-
-// Injections and laser are done by a doctor; practitioners only do IV drips.
-// Injections and laser are doctor-only, so practitioners don't see those cases
-// at all. Everyone else sees every case.
-export function canSeeCase(role: SessionUser["role"], type: CaseType) {
-  return role !== "PRACTITIONER" || type === "IV_DRIP";
-}
-
-export function visibleCasesWhere(role: SessionUser["role"]): Prisma.TreatmentCaseWhereInput {
-  return role === "PRACTITIONER" ? { type: "IV_DRIP" } : {};
-}
-
-export function canTreat(role: SessionUser["role"], type: CaseType) {
-  if (role === "RECEPTION") return false;
-  return type === "IV_DRIP" || role !== "PRACTITIONER";
 }
 
 export type CheckIn = {
@@ -268,9 +256,8 @@ export async function signConsent(caseId: string, signedName: string, signature:
   if (row.patientId) {
     const patient = await db.patient.findUnique({ where: { id: row.patientId } });
     if (patient) {
-      const prev = decryptPatient(patient);
-      const { id: _id, createdAt: _c, updatedAt: _u, ...rest } = prev;
-      await updatePatient(row.patientId, { ...rest, consent: { ...prev.consent, signedName, signedAt: signed.signedAt } });
+      const prev = patientRecord(patient);
+      await updatePatient(row.patientId, { ...prev, consent: { ...prev.consent, signedName, signedAt: signed.signedAt } });
     }
   }
   return true;
@@ -344,10 +331,6 @@ export async function getCase(id: string) {
   if (!row) return null;
   const { doctor, practitioner, ...rest } = row;
   return { ...decryptCase(rest), doctor, practitioner };
-}
-
-function appUrl() {
-  return (process.env.APP_URL || "http://localhost:3000").replace(/\/$/, "");
 }
 
 export function doctorRequestMessage(c: { code: string; consent: CaseRecord; preVitals: Vitals }, link: string): WhatsAppMessage {
@@ -477,7 +460,7 @@ export async function handleDoctorReply(fromPhone: string, body: string): Promis
   const c = pending[0];
   // Another answer (the link, or a second message) may have got there first.
   if (!(await recordDecision(c.id, reply.approve, "WhatsApp"))) return `#${c.code} has already been decided. Please contact the clinic if you need to change it.`;
-  await db.auditLog.create({ data: { userId: doctors[0].id, action: reply.approve ? "doctor-approve" : "doctor-decline", entity: "TreatmentCase", entityId: c.id } });
+  await audit(doctors[0], reply.approve ? "doctor-approve" : "doctor-decline", "TreatmentCase", c.id);
   return reply.approve ? `Thank you. #${c.code} approved; the patient will sign and the practitioner can proceed.` : `Thank you. #${c.code} declined; the practitioner will not proceed.`;
 }
 

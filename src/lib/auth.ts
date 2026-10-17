@@ -1,13 +1,13 @@
 import "server-only";
 import { cache } from "react";
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import type { Role, User } from "@prisma/client";
 import { db } from "./db";
-import { ipFromForwardedFor } from "./client-ip";
+import { audit, clientIp } from "./audit";
+import { unlockTablet } from "./tablet";
 import { blindIndex, normaliseEmail, randomToken, sha256 } from "./crypto";
-import { KIOSK_COOKIE } from "./kiosk";
 
 export const SESSION_COOKIE = "fy_session";
 const SESSION_HOURS = 8;
@@ -25,11 +25,6 @@ export type SessionUser = Pick<User, "id" | "name" | "email" | "role">;
 
 export async function hashPassword(password: string) {
   return bcrypt.hash(password, 12);
-}
-
-export async function clientIp(): Promise<string | null> {
-  const h = await headers();
-  return ipFromForwardedFor(h.get("x-forwarded-for")) ?? h.get("x-real-ip");
 }
 
 export type LoginResult = { ok: true; userId: string } | { ok: false; error: string };
@@ -84,7 +79,7 @@ async function startSession(userId: string) {
     path: "/",
     expires: expiresAt,
   });
-  await db.auditLog.create({ data: { userId, action: "login", entity: "User", entityId: userId, ipAddress: await clientIp() } });
+  await audit({ id: userId }, "login", "User", userId);
 }
 
 export async function logout() {
@@ -96,7 +91,7 @@ export async function logout() {
   store.delete(SESSION_COOKIE);
   // A device left in check-in mode is unlocked too, so the next person to sign
   // in on it isn't sent straight to the check-in screen.
-  store.delete(KIOSK_COOKIE);
+  await unlockTablet();
 }
 
 export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { CONSENT_FORMS } from "@/lib/consent-forms";
+import { SuccessTick } from "@/components/SuccessTick";
 
 export const metadata = { title: "Thank you" };
 
@@ -17,7 +18,7 @@ export default async function KioskCase({ params, searchParams }: { params: Prom
   return (
     <div className="mx-auto max-w-2xl space-y-6 text-center">
       <div className="card space-y-4 py-10">
-        <svg aria-hidden="true" className="mx-auto" width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="32" fill="#e6f4ea" /><path d="M19 33l9 9 17-19" stroke="#17693a" strokeWidth="5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        <SuccessTick />
         <h1 className="page-title">Thank you, your form is signed</h1>
         <p className="text-lg">{c.consentEmailedAt ? "A copy has been emailed to you." : "A copy will be emailed to you."}</p>
         <p className="text-lg">{handedOver ? `Please hand the tablet back to ${staff}.` : "Your practitioner will be with you shortly."}</p>

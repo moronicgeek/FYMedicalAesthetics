@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { handToClientAction, startCaseAction } from "@/app/actions/cases";
 import type { SessionUser } from "@/lib/auth";
-import { canTreat, type CaseListItem } from "@/lib/cases";
+import { canTreat } from "@/lib/access";
+import type { CaseListItem } from "@/lib/cases";
 import { CONSENT_FORMS } from "@/lib/consent-forms";
 import { formatTime } from "@/lib/time";
 
