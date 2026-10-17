@@ -9,7 +9,7 @@ export const metadata = { title: "Patients" };
 export default async function PatientsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const user = await requireUser();
   const { q = "" } = await searchParams;
-  const patients = await searchPatients(q);
+  const patients = await searchPatients(q, user.role);
   await audit(user, q ? "search" : "list", "Patient");
 
   return (

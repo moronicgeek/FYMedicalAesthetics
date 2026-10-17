@@ -164,7 +164,7 @@ export async function preVitalsAction(_prev: StepState, form: FormData): Promise
   if (!vitals || Object.keys(allErrors).length) return { errors: allErrors, values };
 
   const result = await recordPreVitals(c.id, user.id, vitals, doctor!);
-  await audit(user, result.status === "referred" ? "vitals-out-of-range" : "vitals-sent-to-doctor", "TreatmentCase", c.id);
+  if (result.status !== "already-done") await audit(user, result.status === "referred" ? "vitals-out-of-range" : "vitals-sent-to-doctor", "TreatmentCase", c.id);
   revalidatePath(`/cases/${c.id}`);
   redirect(`/cases/${c.id}${result.status === "sent" && !result.delivered ? "?undelivered=1" : ""}`);
 }
@@ -178,13 +178,18 @@ export async function resendDoctorAction(form: FormData) {
   redirect(`/cases/${id}${ok ? "?resent=1" : "?undelivered=1"}`);
 }
 
-// Fallback when the doctor phones in their answer instead of replying.
+// Fallback when the doctor phones in their answer instead of replying. Staff
+// name the doctor who answered, and a YES needs a reason, which is kept with
+// the case so nobody can quietly approve a drip themselves.
 export async function manualDecisionAction(form: FormData) {
   const user = await requireUser(["ADMIN", "DOCTOR", "PRACTITIONER"]);
   const id = String(form.get("caseId"));
   await loadOpenCase(id, user);
   const approve = form.get("decision") === "yes";
-  if (await recordDecision(id, approve, `recorded by ${user.name}`)) {
+  const reason = String(form.get("reason") ?? "").trim();
+  const doctor = await db.user.findFirst({ where: { id: String(form.get("doctorId") ?? ""), role: "DOCTOR", active: true }, select: { id: true } });
+  if (!doctor || (approve && !reason) || reason.length > 200) redirect(`/cases/${id}?decisionmissing=1`);
+  if (await recordDecision(id, approve, `by phone, recorded by ${user.name}`, { doctorId: doctor.id, note: reason })) {
     await audit(user, approve ? "doctor-approve-recorded" : "doctor-decline-recorded", "TreatmentCase", id);
   }
   redirect(`/cases/${id}`);
@@ -387,7 +392,7 @@ export async function assessmentAction(_prev: StepState, form: FormData): Promis
 
   if (!iv) redirect(`/cases/${c.id}`);
   const result = await recordPreVitals(c.id, user.id, vitalsResult.vitals!, doctor!);
-  await audit(user, result.status === "referred" ? "vitals-out-of-range" : "vitals-sent-to-doctor", "TreatmentCase", c.id);
+  if (result.status !== "already-done") await audit(user, result.status === "referred" ? "vitals-out-of-range" : "vitals-sent-to-doctor", "TreatmentCase", c.id);
   revalidatePath(`/cases/${c.id}`);
   redirect(`/cases/${c.id}${result.status === "sent" && !result.delivered ? "?undelivered=1" : ""}`);
 }

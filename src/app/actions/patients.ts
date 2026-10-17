@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { createPatient, decryptPatient, findSamePatient, getPatient, toRecord, updatePatient } from "@/lib/patients";
+import { canSeePatient, createPatient, decryptPatient, findSamePatient, getPatient, toRecord, updatePatient } from "@/lib/patients";
 import { mergePatientRecord } from "@/lib/patient-match";
 import { fieldErrors, formToObject, patientSchema, type FieldErrors } from "@/lib/validation";
 
@@ -21,7 +21,7 @@ export async function savePatientAction(_prev: PatientFormState, form: FormData)
 
   if (patientId) {
     const existing = await getPatient(patientId);
-    if (!existing) return { errors: { form: "That patient record no longer exists." }, values };
+    if (!existing || !(await canSeePatient(user.role, patientId))) return { errors: { form: "That patient record no longer exists." }, values };
     await updatePatient(patientId, record);
     await audit(user, "update", "Patient", patientId);
     redirect(`/patients/${patientId}?saved=1`);

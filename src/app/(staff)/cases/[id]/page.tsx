@@ -170,6 +170,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
       {flags.emailfail && <div className="alert alert-error" role="alert">The consent email could not be sent. Check the email settings.</div>}
       {flags.undelivered && <div className="alert alert-error" role="alert">The message to the doctor could not be sent. Check the WhatsApp settings and the doctor&rsquo;s mobile number, or phone the doctor and record their answer below.</div>}
       {flags.resent && <div className="alert alert-success" role="status">Approval request sent to the doctor again.</div>}
+      {flags.decisionmissing && <div className="alert alert-error" role="alert">To record the doctor&rsquo;s answer, choose the doctor who answered. A YES also needs a reason (up to 200 characters).</div>}
 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
@@ -282,10 +283,24 @@ export default async function CasePage({ params, searchParams }: { params: Promi
               <form action={resendDoctorAction}><input type="hidden" name="caseId" value={c.id} /><button className="btn btn-secondary" type="submit">Send to doctor again</button></form>
               <details className="w-full">
                 <summary className="cursor-pointer font-bold text-brand-dark underline">Doctor answered by phone instead?</summary>
-                <div className="mt-3 flex flex-wrap gap-3">
-                  <form action={manualDecisionAction}><input type="hidden" name="caseId" value={c.id} /><input type="hidden" name="decision" value="yes" /><button className="btn btn-primary" type="submit">Doctor said YES</button></form>
-                  <form action={manualDecisionAction}><input type="hidden" name="caseId" value={c.id} /><input type="hidden" name="decision" value="no" /><button className="btn btn-danger" type="submit">Doctor said NO</button></form>
-                </div>
+                <form action={manualDecisionAction} className="mt-3 space-y-4">
+                  <input type="hidden" name="caseId" value={c.id} />
+                  <label className="field" htmlFor="decision-doctor">
+                    <span className="label">Doctor who answered</span>
+                    <select id="decision-doctor" name="doctorId" className="input" defaultValue={c.doctorId ?? ""} required>
+                      {doctors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                  </label>
+                  <label className="field" htmlFor="decision-reason">
+                    <span className="label">Reason it is recorded here</span>
+                    <span className="hint">Needed for a YES, e.g. &ldquo;Doctor phoned back, no WhatsApp signal&rdquo;. It is kept with the case.</span>
+                    <input id="decision-reason" name="reason" className="input" maxLength={200} />
+                  </label>
+                  <div className="flex flex-wrap gap-3">
+                    <button className="btn btn-primary" type="submit" name="decision" value="yes">Doctor said YES</button>
+                    <button className="btn btn-danger" type="submit" name="decision" value="no">Doctor said NO</button>
+                  </div>
+                </form>
               </details>
             </div>
           )}
@@ -298,6 +313,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
             {c.doctor?.name ?? "The doctor"} said {c.doctorDecision ? "YES" : "NO"} at {formatTime(c.doctorDecisionAt)}
             {c.doctorDecisionVia ? ` (${c.doctorDecisionVia})` : ""}.
           </p>
+          {c.doctorDecisionNote && <p>Reason: {c.doctorDecisionNote}</p>}
           {c.doctorDecision === false && <p>Do not administer the drip. Refer the patient to a doctor immediately. The patient does not sign anything.</p>}
           {c.doctorDecision && s === "IN_PROGRESS" && <p>You may proceed with the drip. When it is finished, measure and enter the vitals again.</p>}
         </div>

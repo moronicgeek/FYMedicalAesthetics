@@ -205,8 +205,10 @@ export async function saveAssessment(caseId: string, record: CaseRecord, idPhoto
   const row = await db.treatmentCase.findUniqueOrThrow({ where: { id: caseId } });
   const patientId = await savePatientFromRecord(record, row.patientId, { recordedBy: practitioner.name });
   if (idPhoto) await db.patient.update({ where: { id: patientId }, data: { idPhoto: encrypt(idPhoto) } });
-  await db.treatmentCase.update({
-    where: { id: caseId },
+  // Only while the case is still at this step, so a second submit of the same
+  // form changes nothing.
+  await db.treatmentCase.updateMany({
+    where: { id: caseId, status: "ASSESSMENT" },
     data: {
       patientId,
       practitionerId: row.practitionerId ?? practitioner.id,
@@ -282,7 +284,8 @@ export async function emailConsent(caseId: string) {
   return result;
 }
 
-export type DecryptedCase = Omit<TreatmentCase, "consent" | "treatment" | "preVitals" | "postVitals" | "officeUse" | "closingNotes" | "practitionerSignature"> & {
+export type DecryptedCase = Omit<TreatmentCase, "consent" | "treatment" | "preVitals" | "postVitals" | "officeUse" | "closingNotes" | "practitionerSignature" | "doctorDecisionNote"> & {
+  doctorDecisionNote?: string;
   consent: CaseRecord;
   preVitals?: Vitals;
   postVitals?: Vitals;
@@ -300,6 +303,7 @@ export function decryptCase({ treatment: _treatment, ...row }: TreatmentCase): D
     officeUse: row.officeUse ? decryptJson<OfficeUse>(row.officeUse) : {},
     closingNotes: row.closingNotes ? decrypt(row.closingNotes) : undefined,
     practitionerSignature: row.practitionerSignature ? decrypt(row.practitionerSignature) : undefined,
+    doctorDecisionNote: row.doctorDecisionNote ? decrypt(row.doctorDecisionNote) : undefined,
   };
 }
 
@@ -336,22 +340,32 @@ export function doctorRequestMessage(c: { code: string; consent: CaseRecord; pre
   };
 }
 
-export type PreVitalsResult = { status: "referred"; outOfRange: ReturnType<typeof checkVitals>["outOfRange"] } | { status: "sent"; delivered: boolean };
+export type PreVitalsResult =
+  | { status: "referred"; outOfRange: ReturnType<typeof checkVitals>["outOfRange"] }
+  | { status: "sent"; delivered: boolean }
+  | { status: "already-done" };
+
+// The case steps before the vitals: the practitioner's form, or a form the
+// client signed at the self-service kiosk.
+const BEFORE_VITALS: CaseStatus[] = ["ASSESSMENT", "CONSENTED"];
 
 export async function recordPreVitals(caseId: string, practitionerId: string, vitals: Vitals, doctor: Pick<User, "id" | "phone">): Promise<PreVitalsResult> {
   const check = checkVitals(vitals, await getVitalRanges());
+  // Each update only applies while the case is still waiting for its vitals,
+  // so a double-click can't send the doctor two requests.
+  const waiting = { id: caseId, status: { in: BEFORE_VITALS } };
   if (!check.withinRange) {
     // Out of range: the practitioner must not proceed, and nothing goes to the doctor.
-    await db.treatmentCase.update({
-      where: { id: caseId },
+    const updated = await db.treatmentCase.updateMany({
+      where: waiting,
       data: { practitionerId, preVitals: encryptJson(vitals), preVitalsAt: new Date(), vitalsWithinRange: false, status: "REFERRED" },
     });
-    return { status: "referred", outOfRange: check.outOfRange };
+    return updated.count === 1 ? { status: "referred", outOfRange: check.outOfRange } : { status: "already-done" };
   }
 
   const token = randomToken(24);
-  const row = await db.treatmentCase.update({
-    where: { id: caseId },
+  const updated = await db.treatmentCase.updateMany({
+    where: waiting,
     data: {
       practitionerId,
       doctorId: doctor.id,
@@ -364,7 +378,8 @@ export async function recordPreVitals(caseId: string, practitionerId: string, vi
       decisionTokenExpires: new Date(Date.now() + DECISION_LINK_HOURS * 3_600_000),
     },
   });
-  const delivered = await sendDoctorRequest(row.id, token, doctor.phone);
+  if (updated.count !== 1) return { status: "already-done" };
+  const delivered = await sendDoctorRequest(caseId, token, doctor.phone);
   return { status: "sent", delivered };
 }
 
@@ -388,7 +403,9 @@ export async function resendDoctorRequest(caseId: string) {
   return sendDoctorRequest(caseId, token, c.doctor.phone);
 }
 
-export async function recordDecision(caseId: string, approve: boolean, via: string) {
+// `recorded` is set when staff record an answer the doctor gave by phone: which
+// doctor answered, and why it was recorded here instead of by the doctor.
+export async function recordDecision(caseId: string, approve: boolean, via: string, recorded?: { doctorId: string; note: string }) {
   const row = await db.treatmentCase.findUnique({ where: { id: caseId }, select: { consent: true } });
   if (!row) return false;
   // After a YES the patient signs before the drip, unless they already signed
@@ -401,6 +418,7 @@ export async function recordDecision(caseId: string, approve: boolean, via: stri
       doctorDecision: approve,
       doctorDecisionAt: new Date(),
       doctorDecisionVia: via,
+      ...(recorded ? { doctorId: recorded.doctorId, doctorDecisionNote: recorded.note ? encrypt(recorded.note) : null } : {}),
       status: approve ? (signed ? "IN_PROGRESS" : "AWAITING_SIGNATURE") : "DECLINED",
       decisionTokenHash: null,
       decisionTokenExpires: null,
@@ -454,8 +472,9 @@ export async function closeCase(caseId: string, practitionerId: string, notes: s
   const outcome = outcomeFor(row.type, row.status);
   if (!outcome) return false;
   const consent = treatment ? { ...decryptJson<CaseRecord>(row.consent), treatment } : undefined;
-  await db.treatmentCase.update({
-    where: { id: caseId },
+  // Only if nobody closed it in the meantime (a double-click, or two staff).
+  const updated = await db.treatmentCase.updateMany({
+    where: { id: caseId, status: row.status },
     data: {
       status: "CLOSED",
       outcome,
@@ -467,7 +486,7 @@ export async function closeCase(caseId: string, practitionerId: string, notes: s
       ...(officeUse ? { officeUse: encryptJson({ ...(row.officeUse ? decryptJson<OfficeUse>(row.officeUse) : {}), ...officeUse }) } : {}),
     },
   });
-  return true;
+  return updated.count === 1;
 }
 
 export const CASE_STATUS_LABEL: Record<CaseStatus, string> = {

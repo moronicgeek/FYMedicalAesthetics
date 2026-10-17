@@ -94,6 +94,7 @@ model Session {
 model LoginAttempt {
   id        String   @id @default(cuid())
   emailHash String
+  ipAddress String?
   success   Boolean
   createdAt DateTime @default(now())
 
@@ -191,6 +192,8 @@ model TreatmentCase {
   doctorDecision        Boolean?
   doctorDecisionAt      DateTime?
   doctorDecisionVia     String?
+  // Why an answer given by phone was recorded by staff (encrypted).
+  doctorDecisionNote    String?
   postVitals            String?
   postVitalsAt          DateTime?
   officeUse             String?
