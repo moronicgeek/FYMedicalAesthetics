@@ -86,6 +86,9 @@ export async function setAppointmentStatusAction(form: FormData) {
 export async function resendConfirmationAction(form: FormData) {
   const user = await requireUser();
   const id = String(form.get("id"));
+  const appt = await db.appointment.findUnique({ where: { id }, select: { doctorId: true, service: true } });
+  if (!appt || !canSeeService(user.role, decrypt(appt.service))) return;
+  if (user.role === "DOCTOR" && appt.doctorId !== user.id) return;
   await sendBookingConfirmation(id);
   await audit(user, "resend-confirmation", "Appointment", id);
   revalidatePath("/patients", "layout");

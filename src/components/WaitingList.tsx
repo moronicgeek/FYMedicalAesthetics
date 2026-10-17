@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { handToClientAction, startCaseAction } from "@/app/actions/cases";
 import type { SessionUser } from "@/lib/auth";
-import { canTreat, type DecryptedCase } from "@/lib/cases";
+import { canTreat, type CaseListItem } from "@/lib/cases";
 import { CONSENT_FORMS } from "@/lib/consent-forms";
 import { formatTime } from "@/lib/time";
 
-function Name({ c }: { c: DecryptedCase }) {
+function Name({ c }: { c: CaseListItem }) {
   return (
     <Link href={`/cases/${c.id}`} className="text-lg font-bold underline underline-offset-4">
       {c.consent.patient.firstName} {c.consent.patient.lastName}
@@ -16,7 +16,7 @@ function Name({ c }: { c: DecryptedCase }) {
 // Clients who have checked in, oldest first. IV drip clients wait for a
 // practitioner; injection and laser clients are handed the tablet to fill in
 // their own form.
-export function WaitingList({ cases, role }: { cases: DecryptedCase[]; role: SessionUser["role"] }) {
+export function WaitingList({ cases, role }: { cases: CaseListItem[]; role: SessionUser["role"] }) {
   return (
     <section className="card" aria-labelledby="waiting-heading">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
@@ -59,7 +59,7 @@ export function WaitingList({ cases, role }: { cases: DecryptedCase[]; role: Ses
 }
 
 // Injection and laser clients who have signed their form and wait for the doctor.
-export function DoctorQueue({ cases }: { cases: DecryptedCase[] }) {
+export function DoctorQueue({ cases }: { cases: CaseListItem[] }) {
   if (cases.length === 0) return null;
   return (
     <section className="card" aria-labelledby="doctor-queue-heading">
@@ -79,6 +79,6 @@ export function DoctorQueue({ cases }: { cases: DecryptedCase[] }) {
   );
 }
 
-export function waitingForDoctor(c: DecryptedCase) {
+export function waitingForDoctor(c: CaseListItem) {
   return c.type !== "IV_DRIP" && c.status === "CONSENTED";
 }

@@ -6,21 +6,12 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Referrer-Policy", value: "same-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-  {
-    key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline'" + (process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""),
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data:",
-      "font-src 'self'",
-      "connect-src 'self'",
-      "frame-ancestors 'none'",
-      "form-action 'self'",
-      "base-uri 'self'",
-    ].join("; "),
-  },
 ];
+
+// Pages get a per-request Content Security Policy with a script nonce from
+// src/middleware.ts. API responses get this strict one, since they never run
+// script.
+const noScriptPolicy = { key: "Content-Security-Policy", value: "default-src 'none'; frame-ancestors 'none'; base-uri 'none'" };
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -29,6 +20,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
+      { source: "/api/:path*", headers: [noScriptPolicy] },
       // Patient pages must never be cached by browsers or shared proxies.
       { source: "/(dashboard|checkin|patients|appointments|intake|staff|cases|kiosk|d|settings|audit)/:path*", headers: [{ key: "Cache-Control", value: "no-store" }] },
     ];
