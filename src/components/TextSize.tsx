@@ -31,7 +31,7 @@ export function TextSize() {
           aria-pressed={size === s.value}
           aria-label={s.name}
           className={`min-h-11 min-w-11 rounded-lg border-2 px-2 font-bold ${
-            size === s.value ? "border-brand bg-brand text-white" : "border-line bg-white text-brand-dark hover:bg-brand-soft"
+            size === s.value ? "border-button bg-button text-white" : "border-line bg-white text-brand-dark hover:bg-brand-soft"
           }`}
           style={{ fontSize: `${0.9 + i * 0.15}rem` }}
         >

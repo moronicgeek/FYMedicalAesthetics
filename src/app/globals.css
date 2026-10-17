@@ -12,6 +12,9 @@
   --color-accent: #a46a5e;
   --color-accent-light: #dcaa9b;
   --color-accent-ink: #6e3e35;
+  /* The grey of the logo's dark half (#5a5a5a), a shade deeper so white
+     button text keeps AAA contrast. */
+  --color-button: #575757;
   --color-ink: #1c1c1c;
   --color-muted: #4f4c48;
   --color-line: #d6d3cf;
@@ -74,9 +77,9 @@ body {
     font-weight: 700; border: 2px solid transparent; cursor: pointer; text-decoration: none;
     transition: background-color 120ms ease;
   }
-  .btn-primary { background: var(--color-brand); color: white; }
+  .btn-primary { background: var(--color-button); color: white; }
   .btn-primary:hover { background: var(--color-brand-dark); }
-  .btn-secondary { background: white; color: var(--color-ink); border-color: var(--color-ink); }
+  .btn-secondary { background: white; color: var(--color-button); border-color: var(--color-button); }
   .btn-secondary:hover { background: var(--color-brand-soft); }
   .btn-danger { background: white; color: var(--color-danger); border-color: var(--color-danger); }
   .btn-danger:hover { background: var(--color-danger-soft); }
