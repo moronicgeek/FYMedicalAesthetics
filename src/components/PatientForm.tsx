@@ -80,7 +80,7 @@ export function PatientForm({ patientId, initial, submitLabel, kiosk = false }: 
           required
           defaultChecked={v.consentData === "on"}
           error={e.consentData}
-          label="I agree that FY Medical Aesthetics may store and use my personal and health information to provide my care. It is kept encrypted and only seen by clinic staff."
+          label="I agree that Lumiere Clinic may store and use my personal and health information to provide my care. It is kept encrypted and only seen by clinic staff."
         />
         <Checkbox name="consentAccuracy" required defaultChecked={v.consentAccuracy === "on"} error={e.consentAccuracy} label="The information I have given is true and complete to the best of my knowledge." />
         <Checkbox name="consentMarketing" defaultChecked={v.consentMarketing === "on"} label="I would like to hear about offers and new treatments (optional)." />

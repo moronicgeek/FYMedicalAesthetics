@@ -272,7 +272,7 @@ export async function emailConsent(caseId: string) {
   const result = await sendEmail(
     [consent.patient.email, clinicInbox()],
     `Your signed consent form - ${clinicName()}`,
-    `Hello ${consent.patient.firstName},\n\nThank you for visiting ${clinicName()}. A copy of the consent form you signed today is attached for your records.\n\n${form.postCare ? `Post-care advice: ${form.postCare}\n\n` : ""}${clinicName()}\nManaged by Lumiere Clinic, Robertsham, Johannesburg`,
+    `Hello ${consent.patient.firstName},\n\nThank you for visiting ${clinicName()}. A copy of the consent form you signed today is attached for your records.\n\n${form.postCare ? `Post-care advice: ${form.postCare}\n\n` : ""}${clinicName()}\nRobertsham, Johannesburg`,
     [{ filename, content: pdf }],
   );
   if (result.ok) await db.treatmentCase.update({ where: { id: caseId }, data: { consentEmailedAt: new Date() } });

@@ -1,6 +1,6 @@
-# FY Medical Aesthetics: patient portal
+# Lumiere Clinic: patient portal
 
-A web app for FY Medical Aesthetics to take patient consent on a tablet, run IV
+A web app for Lumiere Clinic to take patient consent on a tablet, run IV
 drip treatments through a doctor's approval, book appointments with
 doctors, and remind patients and doctors before each appointment.
 
@@ -187,7 +187,7 @@ deploy filled in.
    ```
    Then sign in and add doctors and reception under **Staff**.
 5. **Custom domain.** In Amplify go to *Hosting → Custom domains*, add e.g.
-   `portal.fymedical.co.za`, and create the DNS records Amplify shows you at your
+   `portal.lumiereclinic.co.za`, and create the DNS records Amplify shows you at your
    domain registrar (or let Amplify do it if the domain is in Route 53). Amplify
    issues the HTTPS certificate automatically. Set `APP_URL` to this address.
 6. **Reminders.** Create the daily schedule from
@@ -198,7 +198,7 @@ deploy filled in.
      --stack-name fymedical-reminders \
      --template-file infra/reminders-schedule.yml \
      --capabilities CAPABILITY_IAM \
-     --parameter-overrides AppUrl=https://portal.fymedical.co.za CronSecret=<CRON_SECRET>
+     --parameter-overrides AppUrl=https://portal.lumiereclinic.co.za CronSecret=<CRON_SECRET>
    ```
    (Or upload the file in the CloudFormation console.) It calls
    `/api/cron/reminders` every day at 06:00 Johannesburg time; change the
@@ -238,9 +238,9 @@ for patients who choose it). There is no SMS.
 
    | Variable | Category | Template text |
    | --- | --- | --- |
-   | `TWILIO_TEMPLATE_BOOKING` | Utility | Hello {{1}}, your appointment with {{2}} at FY Medical Aesthetics is booked for {{3}}. Please call us if you need to change it. |
-   | `TWILIO_TEMPLATE_REMINDER` | Utility | Hello {{1}}, this is a reminder of your appointment with {{2}} at FY Medical Aesthetics on {{3}}. Please call us if you can't make it. |
-   | `TWILIO_TEMPLATE_DOCTOR_APPROVAL` | Utility | FY Medical Aesthetics IV drip approval #{{1}}. Patient: {{2}}. Drip: {{3}}. Vitals: {{4}}. Reply YES {{1}} to approve or NO {{1}} to decline, or open {{5}} |
+   | `TWILIO_TEMPLATE_BOOKING` | Utility | Hello {{1}}, your appointment with {{2}} at Lumiere Clinic is booked for {{3}}. Please call us if you need to change it. |
+   | `TWILIO_TEMPLATE_REMINDER` | Utility | Hello {{1}}, this is a reminder of your appointment with {{2}} at Lumiere Clinic on {{3}}. Please call us if you can't make it. |
+   | `TWILIO_TEMPLATE_DOCTOR_APPROVAL` | Utility | Lumiere Clinic IV drip approval #{{1}}. Patient: {{2}}. Drip: {{3}}. Vitals: {{4}}. Reply YES {{1}} to approve or NO {{1}} to decline, or open {{5}} |
 
    The variables must stay in that order. Quick-reply buttons labelled **YES**
    and **NO** can be added to the approval template: a tap is read the same as

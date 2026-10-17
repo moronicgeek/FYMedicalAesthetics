@@ -9,7 +9,7 @@ export const metadata = { title: "Sign in" };
 export default async function LoginPage() {
   if (await getCurrentUser()) redirect("/dashboard");
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col border-t-4 border-accent">
       <header className="flex justify-end px-4 py-4 sm:px-8">
         <TextSize />
       </header>

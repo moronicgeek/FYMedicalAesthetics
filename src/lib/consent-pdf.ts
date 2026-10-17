@@ -9,8 +9,9 @@ const A4: [number, number] = [595.28, 841.89];
 const MARGIN = 48;
 const WIDTH = A4[0] - MARGIN * 2;
 const FOOTER = 40;
-// The Stone & Charcoal theme of the app.
+// The Stone & Charcoal theme of the app, with the rose of the Lumiere logo.
 const CHARCOAL = rgb(0.17, 0.17, 0.17);
+const ROSE = rgb(0.643, 0.416, 0.369);
 const INK = rgb(0.11, 0.11, 0.1);
 const MUTED = rgb(0.38, 0.36, 0.34);
 const STONE = rgb(0.937, 0.933, 0.925);
@@ -55,26 +56,24 @@ class Writer {
   private firstPage() {
     this.page = this.doc.addPage(A4);
     const top = A4[1] - MARGIN;
-    const h = 58;
+    // The wordmark already spells out "Lumiere Clinic", so only the address sits under it.
+    const h = 44;
     const w = (this.logo.width / this.logo.height) * h;
     this.page.drawImage(this.logo, { x: MARGIN, y: top - h, width: w, height: h });
-    const tx = MARGIN + w + 14;
-    this.draw("FY MEDICAL AESTHETICS", tx, top - 24, 15, true, CHARCOAL);
-    this.draw(CLINIC_LINE, tx, top - 40, 9, false, MUTED);
+    this.draw(CLINIC_LINE, MARGIN + 3, top - h - 12, 9, false, MUTED);
     this.drawRight("SIGNED CONSENT FORM", top - 22, 8, true, MUTED);
     this.drawRight(`Reference #${this.reference}`, top - 37, 10, true, INK);
-    this.y = top - h - 14;
-    this.page.drawLine({ start: { x: MARGIN, y: this.y }, end: { x: A4[0] - MARGIN, y: this.y }, thickness: 1.5, color: CHARCOAL });
+    this.y = top - h - 24;
+    this.page.drawLine({ start: { x: MARGIN, y: this.y }, end: { x: A4[0] - MARGIN, y: this.y }, thickness: 1.5, color: ROSE });
     this.y -= 22;
   }
 
   private nextPage() {
     this.page = this.doc.addPage(A4);
     const top = A4[1] - MARGIN;
-    const h = 26;
+    const h = 24;
     const w = (this.logo.width / this.logo.height) * h;
     this.page.drawImage(this.logo, { x: MARGIN, y: top - h, width: w, height: h });
-    this.draw("FY MEDICAL AESTHETICS", MARGIN + w + 10, top - 17, 10, true, CHARCOAL);
     this.drawRight(`Reference #${this.reference}`, top - 17, 9, false, MUTED);
     this.y = top - h - 10;
     this.page.drawLine({ start: { x: MARGIN, y: this.y }, end: { x: A4[0] - MARGIN, y: this.y }, thickness: 0.75, color: CHARCOAL });
@@ -230,7 +229,7 @@ class Writer {
     const pages = this.doc.getPages();
     pages.forEach((page, i) => {
       page.drawLine({ start: { x: MARGIN, y: MARGIN + 14 }, end: { x: A4[0] - MARGIN, y: MARGIN + 14 }, thickness: 0.5, color: LINE });
-      this.draw(`FY Medical Aesthetics | ${CLINIC_LINE}`, MARGIN, MARGIN, 7.5, false, MUTED, page);
+      this.draw(`Lumiere Clinic | ${CLINIC_LINE}`, MARGIN, MARGIN, 7.5, false, MUTED, page);
       this.drawRight(`Page ${i + 1} of ${pages.length}`, MARGIN, 7.5, false, MUTED, page);
     });
   }
@@ -243,7 +242,7 @@ export async function buildConsentPdf(consent: ConsentRecord, caseCode: string):
   const fullName = `${p.firstName} ${p.lastName}`;
   const signedAt = formatDateTime(new Date(consent.signedAt));
   doc.setTitle(`${form.title} - ${fullName}`);
-  doc.setAuthor("FY Medical Aesthetics");
+  doc.setAuthor("Lumiere Clinic");
   const fonts = { regular: await doc.embedFont(StandardFonts.Helvetica), bold: await doc.embedFont(StandardFonts.HelveticaBold) };
   const logo = await doc.embedPng(Buffer.from(LOGO_PNG_BASE64, "base64"));
   const signature = await doc.embedPng(Buffer.from(consent.signature.split(",")[1] ?? "", "base64"));

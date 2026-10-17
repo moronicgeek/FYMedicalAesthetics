@@ -8,7 +8,7 @@ export default async function IntakePage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
-        <h1 className="page-title">Welcome to FY Medical Aesthetics</h1>
+        <h1 className="page-title">Welcome to Lumiere Clinic</h1>
         <p className="muted mt-2 text-lg">
           Please fill in your details below. Fields marked <span className="text-danger" aria-hidden="true">*</span>
           <span className="sr-only">with an asterisk</span> are required. If you need help, just ask our reception team.

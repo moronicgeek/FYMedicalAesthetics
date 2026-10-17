@@ -1,6 +1,6 @@
 # Disaster recovery
 
-What to do when something goes badly wrong with the FY Medical app, and what to
+What to do when something goes badly wrong with the Lumiere Clinic portal, and what to
 set up now so that recovery is possible. Everything runs on AWS in Ireland
 (`eu-west-1`), as described in [hosting-and-costs.md](hosting-and-costs.md).
 

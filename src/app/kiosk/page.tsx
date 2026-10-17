@@ -13,7 +13,7 @@ export default function KioskPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="page-title">Welcome to FY Medical Aesthetics</h1>
+        <h1 className="page-title">Welcome to Lumiere Clinic</h1>
         <p className="muted mt-2 text-lg">Please choose the treatment you are here for today. You can make the text bigger with the A+ buttons at the top.</p>
       </div>
       <ul className="grid gap-4">

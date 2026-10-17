@@ -4,7 +4,7 @@ import "server-only";
 // Appointment messages deliberately leave out treatment details, so they only
 // say when and where the appointment is.
 
-const CLINIC = () => process.env.CLINIC_NAME || "FY Medical Aesthetics";
+const CLINIC = () => process.env.CLINIC_NAME || "Lumiere Clinic";
 
 export type SendResult = { channel: "email" | "whatsapp"; ok: boolean; skipped?: boolean; error?: string };
 
