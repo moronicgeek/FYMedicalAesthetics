@@ -8,7 +8,7 @@ import { TextSize } from "@/components/TextSize";
 export default async function KioskLayout({ children }: { children: React.ReactNode }) {
   await requireKioskUser();
   return (
-    <div className="flex min-h-screen flex-col">
+    <div data-kiosk className="flex min-h-screen flex-col">
       <header className="border-t-4 border-b border-t-accent border-b-line bg-header">
         <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Logo />

@@ -35,10 +35,12 @@
   --font-sans: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-/* Base size is 18px; staff and patients can enlarge it with the A+ control. */
+/* Base size is 18px. Patients can enlarge it with the A+ control on the
+   tablet screens; staff pages ignore that choice so a size a client picked
+   doesn't carry over once staff take the tablet back. */
 html { font-size: 112.5%; }
-html[data-text="large"] { font-size: 125%; }
-html[data-text="xlarge"] { font-size: 140%; }
+html[data-text="large"]:has([data-kiosk]) { font-size: 125%; }
+html[data-text="xlarge"]:has([data-kiosk]) { font-size: 140%; }
 
 body {
   background: var(--color-canvas);

@@ -139,8 +139,8 @@ cases) and **Reception** (patients and bookings, no clinical steps).
 
 ## Accessibility
 
-18px base text with **A / A+ / A++** controls on every page (remembered per
-device), high-contrast colours that meet WCAG AA, 48px+ touch targets, visible
+18px base text with **A / A+ / A++** controls on the patient tablet screens
+(remembered per device; staff pages stay at the normal size), high-contrast colours that meet WCAG AA, 48px+ touch targets, visible
 focus outlines, a skip link, labelled fields with inline error messages, and
 reduced motion respected. Works on phones, tablets and desktops.
 
