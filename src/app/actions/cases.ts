@@ -308,7 +308,7 @@ export async function handCheckInToClientAction() {
   const user = await requireUser();
   await lockTablet();
   await audit(user, "tablet-check-in", "Device");
-  redirect("/kiosk/checkin");
+  redirect("/kiosk");
 }
 
 // Injections and laser: the client fills in their own details, medical history
