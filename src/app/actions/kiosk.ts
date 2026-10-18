@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { login, requireKioskUser, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
+import { safeNext } from "@/lib/kiosk";
 import { lockTablet, unlockTablet } from "@/lib/tablet";
 
 export async function startKioskAction() {
@@ -13,10 +14,6 @@ export async function startKioskAction() {
 }
 
 export type ExitState = { error?: string; email?: string };
-
-function safeNext(next: string | undefined) {
-  return next && /^\/(cases|dashboard)(\/[\w-]*)?$/.test(next) ? next : "/dashboard";
-}
 
 // Any staff member can take over the tablet: they sign in here, which also
 // switches the device's session to them.

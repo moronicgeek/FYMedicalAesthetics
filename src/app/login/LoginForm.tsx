@@ -11,11 +11,11 @@ export function LoginForm() {
       {state.error && <div className="alert alert-error" role="alert">{state.error}</div>}
       <label className="field" htmlFor="email">
         <span className="label">Email address</span>
-        <input id="email" name="email" type="email" className="input" autoComplete="username" defaultValue={state.email} required />
+        <input id="email" name="email" type="email" className="input" autoComplete="off" defaultValue={state.email} required />
       </label>
       <label className="field" htmlFor="password">
         <span className="label">Password</span>
-        <input id="password" name="password" type="password" className="input" autoComplete="current-password" required />
+        <input id="password" name="password" type="password" className="input" autoComplete="off" required />
       </label>
       <SubmitButton className="btn btn-primary btn-lg w-full" pendingText="Signing in…">Sign in</SubmitButton>
     </form>

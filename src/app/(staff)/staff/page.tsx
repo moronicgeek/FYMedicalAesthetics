@@ -1,6 +1,7 @@
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { setStaffActiveAction } from "@/app/actions/staff";
+import { removePasskeyAction } from "@/app/actions/passkeys";
 import { AddStaffForm, ResetPasswordForm } from "@/components/StaffForms";
 
 export const metadata = { title: "Staff" };
@@ -9,7 +10,10 @@ const ROLE = { ADMIN: "Administrator", DOCTOR: "Doctor", PRACTITIONER: "Practiti
 
 export default async function StaffPage() {
   const admin = await requireUser(["ADMIN"]);
-  const staff = await db.user.findMany({ orderBy: [{ active: "desc" }, { name: "asc" }] });
+  const staff = await db.user.findMany({
+    orderBy: [{ active: "desc" }, { name: "asc" }],
+    include: { passkeys: { select: { id: true, deviceName: true }, orderBy: { createdAt: "asc" } } },
+  });
   return (
     <div className="space-y-6">
       <h1 className="page-title">Staff</h1>
@@ -35,6 +39,18 @@ export default async function StaffPage() {
                   </form>
                 )}
               </div>
+              {s.passkeys.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="muted">Fingerprint sign-in on:</span>
+                  {s.passkeys.map((p) => (
+                    <form key={p.id} action={removePasskeyAction} className="flex items-center gap-2">
+                      <input type="hidden" name="id" value={p.id} />
+                      <span className="font-bold">{p.deviceName}</span>
+                      <button type="submit" className="btn btn-secondary">Remove</button>
+                    </form>
+                  ))}
+                </div>
+              )}
               {s.active && <ResetPasswordForm id={s.id} name={s.name} />}
             </li>
           ))}

@@ -64,7 +64,7 @@ export async function login(emailInput: string, password: string): Promise<Login
   return { ok: true, userId: user.id };
 }
 
-async function startSession(userId: string) {
+export async function startSession(userId: string, how: "login" | "passkey-login" = "login") {
   const store = await cookies();
   const previous = store.get(SESSION_COOKIE)?.value;
   if (previous) await db.session.deleteMany({ where: { tokenHash: sha256(previous) } });
@@ -79,7 +79,14 @@ async function startSession(userId: string) {
     path: "/",
     expires: expiresAt,
   });
-  await audit({ id: userId }, "login", "User", userId);
+  await audit({ id: userId }, how, "User", userId);
+}
+
+// Asked again before adding a fingerprint sign-in, so someone using a
+// colleague's unattended screen can't add their own finger to that account.
+export async function checkPassword(userId: string, password: string) {
+  const user = await db.user.findUnique({ where: { id: userId }, omit: { passwordHash: false } });
+  return !!user && (await bcrypt.compare(password, user.passwordHash));
 }
 
 export async function logout() {

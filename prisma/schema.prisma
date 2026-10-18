@@ -74,6 +74,7 @@ model User {
   active       Boolean       @default(true)
   createdAt    DateTime      @default(now())
   sessions     Session[]
+  passkeys     Passkey[]
   appointments Appointment[] @relation("DoctorAppointments")
   auditLogs    AuditLog[]
   casesAsPractitioner TreatmentCase[] @relation("CasePractitioner")
@@ -89,6 +90,34 @@ model Session {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+// Fingerprint / face sign-in (WebAuthn passkeys). The fingerprint never leaves
+// the device; we only keep the public key the device made for this site.
+model Passkey {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialId String    @unique
+  publicKey    Bytes
+  counter      Int       @default(0)
+  transports   String[]
+  // Staff-chosen label such as "Reception tablet".
+  deviceName   String
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+
+  @@index([userId])
+}
+
+// One-time WebAuthn challenges, found by the hash of a short-lived cookie.
+model PasskeyChallenge {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  challenge String
+  // Set when adding a passkey; empty when signing in.
+  userId    String?
+  expiresAt DateTime
 }
 
 model LoginAttempt {
