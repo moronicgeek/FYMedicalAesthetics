@@ -32,7 +32,7 @@ import type { ConsentFormDef } from "@/lib/consent-forms";
 import { getIvDripNames } from "@/lib/settings";
 import { lockTablet } from "@/lib/tablet";
 import { validIdPhoto, validSignature } from "@/lib/signature";
-import { fieldErrors, formToObject, isoDate, optional, optionalPhone, phone, required, type FieldErrors } from "@/lib/validation";
+import { echo, fieldErrors, formToObject, isoDate, optional, optionalPhone, phone, required, type FieldErrors } from "@/lib/validation";
 import { parseVitals, type Vitals } from "@/lib/vitals";
 
 export type ConsentFormState = { errors?: FieldErrors; values?: Record<string, string> };
@@ -85,7 +85,7 @@ export async function submitConsentAction(_prev: ConsentFormState, form: FormDat
   const user = await requireUser();
   const values = formToObject(form);
   const type = values.formType;
-  if (!type || !isCaseType(type)) return { errors: { form: "Unknown consent form." }, values };
+  if (!type || !isCaseType(type)) return { errors: { form: "Unknown consent form." }, values: echo(values) };
   const def = CONSENT_FORMS[type];
   const errors: FieldErrors = {};
 
@@ -101,7 +101,7 @@ export async function submitConsentAction(_prev: ConsentFormState, form: FormDat
   if (!validSignature(values.signature)) errors.signature = "Please sign in the box.";
 
   if (Object.keys(errors).length || !parsed.success) {
-    return { errors: Object.keys(errors).length ? errors : { form: "Please check the form." }, values };
+    return { errors: Object.keys(errors).length ? errors : { form: "Please check the form." }, values: echo(values) };
   }
 
   const consent: ConsentRecord = {
@@ -128,7 +128,7 @@ export async function submitConsentAction(_prev: ConsentFormState, form: FormDat
   // check-in. Otherwise the self-service kiosk, which starts a new case.
   if (values.caseId) {
     await loadOpenCase(values.caseId, user);
-    if (!(await completeClientForm(values.caseId, consent))) return { errors: { form: "This form has already been completed." }, values };
+    if (!(await completeClientForm(values.caseId, consent))) return { errors: { form: "This form has already been completed." }, values: echo(values) };
     await audit(user, "consent-signed", "TreatmentCase", values.caseId);
     await emailConsent(values.caseId).catch(() => undefined);
     redirect(`/kiosk/case/${values.caseId}?signed=1`);
@@ -154,11 +154,11 @@ export async function preVitalsAction(_prev: StepState, form: FormData): Promise
   const user = await requireUser(["ADMIN", "DOCTOR", "PRACTITIONER"]);
   const values = formToObject(form);
   const c = await loadOpenCase(values.caseId, user);
-  if (c.type !== "IV_DRIP" || c.status !== "CONSENTED") return { errors: { form: "This step has already been done." }, values };
+  if (c.type !== "IV_DRIP" || c.status !== "CONSENTED") return { errors: { form: "This step has already been done." }, values: echo(values) };
   const { vitals, errors } = parseVitals(values);
   const allErrors: FieldErrors = { ...(errors ?? {}) };
   const doctor = await approvingDoctor(values.doctorId, allErrors);
-  if (!vitals || !doctor || Object.keys(allErrors).length) return { errors: allErrors, values };
+  if (!vitals || !doctor || Object.keys(allErrors).length) return { errors: allErrors, values: echo(values) };
   return sendVitals(user, c.id, vitals, doctor);
 }
 
@@ -219,9 +219,9 @@ export async function postVitalsAction(_prev: StepState, form: FormData): Promis
   const user = await requireUser(["ADMIN", "DOCTOR", "PRACTITIONER"]);
   const values = formToObject(form);
   const c = await loadOpenCase(values.caseId, user);
-  if (c.status !== "IN_PROGRESS") return { errors: { form: "This step isn't available." }, values };
+  if (c.status !== "IN_PROGRESS") return { errors: { form: "This step isn't available." }, values: echo(values) };
   const { vitals, errors } = parseVitals(values);
-  if (!vitals) return { errors, values };
+  if (!vitals) return { errors, values: echo(values) };
   await recordPostVitals(c.id, vitals, officeUseFrom(values, c.type));
   await audit(user, "post-vitals", "TreatmentCase", c.id);
   redirect(`/cases/${c.id}`);
@@ -231,16 +231,16 @@ export async function closeCaseAction(_prev: StepState, form: FormData): Promise
   const user = await requireUser(["ADMIN", "DOCTOR", "PRACTITIONER"]);
   const values = formToObject(form);
   const c = await loadOpenCase(values.caseId, user);
-  if (!canTreat(user.role, c.type)) return { errors: { form: "Only a doctor can close an injection or laser case." }, values };
+  if (!canTreat(user.role, c.type)) return { errors: { form: "Only a doctor can close an injection or laser case." }, values: echo(values) };
   const notes = values.notes?.trim();
   const errors: FieldErrors = {};
   if (notes && notes.length > 200) errors.notes = "Please keep notes to 200 characters.";
   if (!validSignature(values.signature)) errors.signature = "Please sign in the box.";
   // Injections and laser: the doctor records which treatment was given.
   const treatment = c.type === "IV_DRIP" ? undefined : parseTreatment(CONSENT_FORMS[c.type], values, errors);
-  if (Object.keys(errors).length) return { errors, values };
+  if (Object.keys(errors).length) return { errors, values: echo(values) };
   const officeUse = { ...(c.type === "IV_DRIP" ? {} : officeUseFrom(values, c.type)), ...salesFrom(values) };
-  if (!(await closeCase(c.id, user.id, notes, values.signature, officeUse, treatment))) return { errors: { form: "This case can't be closed yet." }, values };
+  if (!(await closeCase(c.id, user.id, notes, values.signature, officeUse, treatment))) return { errors: { form: "This case can't be closed yet." }, values: echo(values) };
   await audit(user, "case-closed", "TreatmentCase", c.id);
   // Back to Today so the next client can be picked up.
   redirect("/dashboard?closed=1");
@@ -273,14 +273,14 @@ export async function checkInAction(_prev: ConsentFormState, form: FormData): Pr
   const parsed = checkInSchema.safeParse(values);
   if (!parsed.success) Object.assign(errors, fieldErrors(parsed.error));
   if (!values.formType || !isCaseType(values.formType)) errors.formType = "Please choose the treatment.";
-  if (Object.keys(errors).length || !parsed.success) return { errors, values };
+  if (Object.keys(errors).length || !parsed.success) return { errors, values: echo(values) };
 
   const type = values.formType as keyof typeof CONSENT_FORMS;
-  if (!canSeeCase(user.role, type)) return { errors: { formType: "Injections and laser are checked in by reception or a doctor." }, values };
+  if (!canSeeCase(user.role, type)) return { errors: { formType: "Injections and laser are checked in by reception or a doctor." }, values: echo(values) };
   const iv = type === "IV_DRIP";
   // An IV client may pick a drip; the practitioner can change it later.
   const drip = iv && values.drip ? values.drip : undefined;
-  if (drip && !(await getIvDripNames()).includes(drip)) return { errors: { drip: "Please choose a drip from the list." }, values };
+  if (drip && !(await getIvDripNames()).includes(drip)) return { errors: { drip: "Please choose a drip from the list." }, values: echo(values) };
   // The client checking themselves in on the tablet: IV drip clients join
   // the waiting list; injection and laser clients go on to their form.
   if (values.mode === "kiosk") {
@@ -289,7 +289,7 @@ export async function checkInAction(_prev: ConsentFormState, form: FormData): Pr
     redirect(iv ? `/kiosk/checked-in/${created.id}` : `/kiosk/form/${created.id}`);
   }
   const startNow = values.intent === "start";
-  if (startNow && iv && !canTreat(user.role, type)) return { errors: { form: "Only a practitioner or doctor can start an IV drip. Add the client to the waiting list instead." }, values };
+  if (startNow && iv && !canTreat(user.role, type)) return { errors: { form: "Only a practitioner or doctor can start an IV drip. Add the client to the waiting list instead." }, values: echo(values) };
   const created = await checkInCase({ type, ...parsed.data, drip }, startNow && iv ? user : undefined);
   await audit(user, startNow && iv ? "case-started" : "checked-in", "TreatmentCase", created.id);
   if (!startNow) redirect(`/cases?checkedin=1`);
@@ -347,8 +347,8 @@ export async function assessmentAction(_prev: StepState, form: FormData): Promis
   const user = await requireUser(["ADMIN", "DOCTOR", "PRACTITIONER"]);
   const values = formToObject(form);
   const c = await loadOpenCase(values.caseId, user);
-  if (c.status !== "ASSESSMENT") return { errors: { form: "This step has already been done." }, values };
-  if (!canTreat(user.role, c.type)) return { errors: { form: "Only a doctor can take on this treatment." }, values };
+  if (c.status !== "ASSESSMENT") return { errors: { form: "This step has already been done." }, values: echo(values) };
+  if (!canTreat(user.role, c.type)) return { errors: { form: "Only a doctor can take on this treatment." }, values: echo(values) };
   const def = CONSENT_FORMS[c.type];
   const errors: FieldErrors = {};
 
@@ -365,9 +365,7 @@ export async function assessmentAction(_prev: StepState, form: FormData): Promis
   const doctor = iv ? await approvingDoctor(values.doctorId, errors) : null;
 
   if (Object.keys(errors).length || !parsed.success) {
-    // The photo is kept in the browser; don't send it back with the form.
-    const { idPhoto: _photo, ...rest } = values;
-    return { errors: Object.keys(errors).length ? errors : { form: "Please check the form." }, values: rest };
+    return { errors: Object.keys(errors).length ? errors : { form: "Please check the form." }, values: echo(values) };
   }
 
   const record: CaseRecord = {
@@ -414,8 +412,8 @@ export async function signConsentAction(_prev: ConsentFormState, form: FormData)
   checkAcknowledgements(def, values, errors);
   if (!values.signedName?.trim()) errors.signedName = "Please type your full name.";
   if (!validSignature(values.signature)) errors.signature = "Please sign in the box.";
-  if (Object.keys(errors).length) return { errors, values };
-  if (!(await signConsent(c.id, values.signedName.trim(), values.signature))) return { errors: { form: "This form has already been signed." }, values };
+  if (Object.keys(errors).length) return { errors, values: echo(values) };
+  if (!(await signConsent(c.id, values.signedName.trim(), values.signature))) return { errors: { form: "This form has already been signed." }, values: echo(values) };
   await audit(user, "consent-signed", "TreatmentCase", c.id);
   // Saved first; the email is best-effort and can be resent from the case.
   await emailConsent(c.id).catch(() => undefined);

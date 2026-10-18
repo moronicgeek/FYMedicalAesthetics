@@ -235,10 +235,12 @@ export async function saveAssessment(caseId: string, record: CaseRecord, idPhoto
   });
 }
 
-export async function getIdPhoto(patientId: string | null) {
+// Where to load the patient's ID photo from, if one is on file. The version
+// changes when the record does, so a replaced photo isn't shown from cache.
+export async function idPhotoUrl(patientId: string | null) {
   if (!patientId) return undefined;
-  const row = await db.patient.findUnique({ where: { id: patientId }, select: { idPhoto: true } });
-  return row?.idPhoto ? decrypt(row.idPhoto) : undefined;
+  const row = await db.patient.findFirst({ where: { id: patientId, idPhoto: { not: null } }, select: { updatedAt: true } });
+  return row ? `/patients/${patientId}/id-photo?v=${row.updatedAt.getTime()}` : undefined;
 }
 
 // The patient reads the conditions on the tablet and signs. Only possible once
@@ -275,13 +277,13 @@ export async function consentPdf(caseId: string) {
   return { consent, filename, pdf: await buildConsentPdf(consent, row.code) };
 }
 
-// A patient's signed consent forms, newest first.
+// A patient's signed consent forms, newest first. Read from the summaries, so
+// the signed forms themselves stay in the database.
 export async function signedConsents(patientId: string) {
-  const rows = await db.treatmentCase.findMany({ where: { patientId }, orderBy: { createdAt: "desc" } });
-  return rows.flatMap((row) => {
-    const consent = decryptJson<CaseRecord>(row.consent);
-    return isSigned(consent) ? [{ caseId: row.id, code: row.code, type: row.type, treatment: consent.treatment, signedAt: new Date(consent.signedAt) }] : [];
-  });
+  const rows = await listCases({ patientId });
+  return rows.reverse().flatMap((row) =>
+    row.consent.signedAt ? [{ caseId: row.id, code: row.code, type: row.type, treatment: row.consent.treatment, signedAt: new Date(row.consent.signedAt) }] : [],
+  );
 }
 
 // Emails the signed consent to the patient and the clinic inbox.

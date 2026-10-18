@@ -95,6 +95,14 @@ export function formToObject(form: FormData): Record<string, string> {
   return out;
 }
 
+// The form's values to send back with its errors, so the fields keep what was
+// typed. Signatures and photos stay in the browser (the signature pad and photo
+// field hold them), so they aren't sent back.
+export function echo(values: Record<string, string>): Record<string, string> {
+  const { signature: _signature, idPhoto: _idPhoto, ...rest } = values;
+  return rest;
+}
+
 export function fieldErrors(error: z.ZodError): FieldErrors {
   const out: FieldErrors = {};
   for (const issue of error.issues) {

@@ -50,7 +50,7 @@ export async function login(emailInput: string, password: string): Promise<Login
     return { ok: false, error: `Too many attempts. Please wait ${LOCKOUT_MINUTES} minutes and try again.` };
   }
 
-  const user = await db.user.findUnique({ where: { email } });
+  const user = await db.user.findUnique({ where: { email }, omit: { passwordHash: false } });
   // Always run bcrypt so response time doesn't reveal whether the email exists.
   dummyHash ??= await bcrypt.hash("timing-equaliser", 12);
   const valid = await bcrypt.compare(password, user?.passwordHash ?? dummyHash);
