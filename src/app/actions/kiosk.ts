@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { login, requireUser } from "@/lib/auth";
+import { login, requireKioskUser, requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { lockTablet, unlockTablet } from "@/lib/tablet";
 
@@ -21,7 +21,7 @@ function safeNext(next: string | undefined) {
 // Any staff member can take over the tablet: they sign in here, which also
 // switches the device's session to them.
 export async function exitKioskAction(_prev: ExitState, form: FormData): Promise<ExitState> {
-  await requireUser();
+  await requireKioskUser();
   const email = String(form.get("email") ?? "");
   const password = String(form.get("password") ?? "");
   if (!email || !password) return { error: "Please enter your email and password.", email };

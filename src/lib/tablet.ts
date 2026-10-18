@@ -11,3 +11,7 @@ export async function lockTablet() {
 export async function unlockTablet() {
   (await cookies()).delete(KIOSK_COOKIE);
 }
+
+export async function isTabletLocked() {
+  return (await cookies()).has(KIOSK_COOKIE);
+}

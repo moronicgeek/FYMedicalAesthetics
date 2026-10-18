@@ -1,7 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { requireKioskUser } from "@/lib/auth";
+import { isTabletLocked } from "@/lib/tablet";
 import { audit } from "@/lib/audit";
 import { canSeePatient, createPatient, findSamePatient, getPatient, patientRecord, toRecord, updatePatient } from "@/lib/patients";
 import { mergePatientRecord } from "@/lib/patient-match";
@@ -10,13 +11,16 @@ import { fieldErrors, formToObject, patientSchema, type FieldErrors } from "@/li
 export type PatientFormState = { errors?: FieldErrors; values?: Record<string, string> };
 
 export async function savePatientAction(_prev: PatientFormState, form: FormData): Promise<PatientFormState> {
-  const user = await requireUser();
+  // Also the tablet's "Register your details" form. A locked tablet can only
+  // register, never edit a record by its ID.
+  const user = await requireKioskUser();
   const values = formToObject(form);
   const parsed = patientSchema.safeParse(values);
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values };
 
-  const patientId = values.patientId;
-  const kiosk = values.mode === "kiosk";
+  const locked = await isTabletLocked();
+  const patientId = locked ? undefined : values.patientId;
+  const kiosk = values.mode === "kiosk" || locked;
   const record = toRecord(parsed.data);
 
   if (patientId) {

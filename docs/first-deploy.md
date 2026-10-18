@@ -107,10 +107,13 @@ SQL
 
 ## 5. After it's live
 
-- **Full certificate checks (follow-up code change):** commit the RDS CA bundle
-  (`https://truststore.pki.rds.amazonaws.com/eu-west-1/eu-west-1-bundle.pem`) to `prisma/` and change
-  both URLs' `sslmode=require` to `sslmode=verify-full&sslrootcert=eu-west-1-bundle.pem`, so the app refuses
-  a server that isn't the real RDS instance.
+- **Certificate checks:** the app and the build's migrations only connect to an RDS server whose certificate
+  matches the instance's endpoint and chains to the bundled Amazon RDS eu-west-1 root (`src/lib/db-url.ts`).
+  Leave `sslmode=require` in the URLs; the code adds the rest. Prisma ignores libpq's `verify-full`/`sslrootcert`,
+  so don't rely on those. It trusts `rds-ca-rsa2048-g1`, the default for new instances. Check yours with
+  `aws rds describe-db-instances --db-instance-identifier fymedical-db --query 'DBInstances[0].CACertificateIdentifier'`;
+  if it differs, set `RDS_CA_CERTIFICATE` in Amplify to that value. To run Prisma commands from the Mac with the same
+  checks: `export DATABASE_URL="$(npx tsx scripts/db-url.ts "$DATABASE_URL")"`.
 - **Custom domain:** *Hosting, Custom domains*, add e.g. `portal.<clinic domain>`, add the DNS records at the registrar,
   then set `APP_URL` to it and redeploy.
 - **Reminders:** once `APP_URL` is final:

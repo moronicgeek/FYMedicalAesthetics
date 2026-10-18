@@ -5,7 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import type { User } from "@prisma/client";
 import { z } from "zod";
 import { canSeeCase, canTreat } from "@/lib/access";
-import { requireUser, type SessionUser } from "@/lib/auth";
+import { requireKioskUser, requireUser, type SessionUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { CONSENT_FORMS, isCaseType } from "@/lib/consent-forms";
@@ -30,7 +30,7 @@ import {
 } from "@/lib/cases";
 import type { ConsentFormDef } from "@/lib/consent-forms";
 import { getIvDripNames } from "@/lib/settings";
-import { lockTablet } from "@/lib/tablet";
+import { isTabletLocked, lockTablet } from "@/lib/tablet";
 import { validIdPhoto, validSignature } from "@/lib/signature";
 import { echo, fieldErrors, formToObject, isoDate, optional, optionalPhone, phone, required, type FieldErrors } from "@/lib/validation";
 import { parseVitals, type Vitals } from "@/lib/vitals";
@@ -81,9 +81,11 @@ const patientDetails = z.object({
   signedName: z.string().trim().min(1, "Please type your full name."),
 });
 
+// Also used on a locked tablet.
 export async function submitConsentAction(_prev: ConsentFormState, form: FormData): Promise<ConsentFormState> {
-  const user = await requireUser();
+  const user = await requireKioskUser();
   const values = formToObject(form);
+  const kiosk = values.mode === "kiosk" || (await isTabletLocked());
   const type = values.formType;
   if (!type || !isCaseType(type)) return { errors: { form: "Unknown consent form." }, values: echo(values) };
   const def = CONSENT_FORMS[type];
@@ -137,7 +139,7 @@ export async function submitConsentAction(_prev: ConsentFormState, form: FormDat
   await audit(user, "consent-signed", "TreatmentCase", created.id);
   // Saved first; the email is best-effort and can be resent from the case.
   await emailConsent(created.id).catch(() => undefined);
-  redirect(values.mode === "kiosk" ? `/kiosk/case/${created.id}` : `/cases/${created.id}`);
+  redirect(kiosk ? `/kiosk/case/${created.id}` : `/cases/${created.id}`);
 }
 
 export type StepState = { errors?: FieldErrors; values?: Record<string, string>; message?: string };
@@ -266,9 +268,11 @@ const checkInSchema = z.object({
   emergencyPhone: optionalPhone,
 });
 
+// Also used on a locked tablet, where it can only check a client in.
 export async function checkInAction(_prev: ConsentFormState, form: FormData): Promise<ConsentFormState> {
-  const user = await requireUser();
+  const user = await requireKioskUser();
   const values = formToObject(form);
+  const kiosk = values.mode === "kiosk" || (await isTabletLocked());
   const errors: FieldErrors = {};
   const parsed = checkInSchema.safeParse(values);
   if (!parsed.success) Object.assign(errors, fieldErrors(parsed.error));
@@ -283,7 +287,7 @@ export async function checkInAction(_prev: ConsentFormState, form: FormData): Pr
   if (drip && !(await getIvDripNames()).includes(drip)) return { errors: { drip: "Please choose a drip from the list." }, values: echo(values) };
   // The client checking themselves in on the tablet: IV drip clients join
   // the waiting list; injection and laser clients go on to their form.
-  if (values.mode === "kiosk") {
+  if (kiosk) {
     const created = await checkInCase({ type, ...parsed.data, drip });
     await audit(user, "checked-in-on-tablet", "TreatmentCase", created.id);
     redirect(iv ? `/kiosk/checked-in/${created.id}` : `/kiosk/form/${created.id}`);
@@ -403,8 +407,9 @@ export async function handToPatientAction(form: FormData) {
   redirect(`/kiosk/sign/${id}`);
 }
 
+// Used on the locked tablet.
 export async function signConsentAction(_prev: ConsentFormState, form: FormData): Promise<ConsentFormState> {
-  const user = await requireUser();
+  const user = await requireKioskUser();
   const values = formToObject(form);
   const c = await loadOpenCase(values.caseId, user);
   const def = CONSENT_FORMS[c.type];
