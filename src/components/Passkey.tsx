@@ -87,6 +87,7 @@ export function AddFingerprint() {
       } catch (e) {
         console.error("Fingerprint set-up failed", e);
         if (e instanceof Error && e.name === "InvalidStateError") setError("Fingerprint sign-in is already set up for you on this device.");
+        else if (e instanceof Error && e.name === "SecurityError") setError("Fingerprint sign-in isn't set up for this web address yet. Please tell the practice administrator (APP_URL must match this address).");
         else setError(cancelled(e) ? "Setting up was cancelled. Please try again." : "Fingerprint sign-in could not be set up on this device.");
       }
     });
