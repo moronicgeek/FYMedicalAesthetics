@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { bookAppointmentAction, type AppointmentFormState } from "@/app/actions/appointments";
 import { Checkbox, FormErrors, SelectField, TextArea } from "./fields";
@@ -7,14 +8,22 @@ import { SubmitButton } from "./SubmitButton";
 
 type Option = { value: string; label: string };
 
-export function BookingForm({ patients, doctors, services, initial, today }: { patients: Option[]; doctors: Option[]; services: readonly string[]; initial: Record<string, string>; today: string }) {
-  const [state, action] = useActionState<AppointmentFormState, FormData>(bookAppointmentAction, { values: initial });
+export function BookingForm({ patient, doctors, services, today }: { patient: Option; doctors: Option[]; services: readonly string[]; today: string }) {
+  const [state, action] = useActionState<AppointmentFormState, FormData>(bookAppointmentAction, {});
   const v = state.values ?? {};
   const e = state.errors ?? {};
   return (
     <form action={action} className="card space-y-5" noValidate>
       <FormErrors errors={state.errors} />
-      <SelectField name="patientId" label="Patient" required placeholder="Choose a patient" options={patients} defaultValue={v.patientId} error={e.patientId} />
+      <input type="hidden" name="patientId" value={patient.value} />
+      <div className="field">
+        <span className="label">Patient</span>
+        {e.patientId && <span className="error-text">{e.patientId}</span>}
+        <p className="flex flex-wrap items-center gap-3">
+          <span className="text-lg font-bold">{patient.label}</span>
+          <Link href="/appointments/new" className="underline">Choose a different patient</Link>
+        </p>
+      </div>
       <div className="grid gap-5 sm:grid-cols-2">
         <SelectField name="doctorId" label="Doctor" required placeholder="Choose a doctor" options={doctors} defaultValue={v.doctorId} error={e.doctorId} />
         <SelectField name="service" label="Treatment" required placeholder="Choose a treatment" options={services.map((s) => ({ value: s, label: s }))} defaultValue={v.service} error={e.service} />

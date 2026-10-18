@@ -77,11 +77,11 @@ export function lookupHashes(record: Pick<PatientRecord, "email" | "phone" | "id
 
 // Just the stored details, without the row's id and timestamps: what to
 // change and pass back to updatePatient.
-export function patientRecord(row: Patient): PatientRecord {
+export function patientRecord(row: Pick<Patient, "data">): PatientRecord {
   return decryptJson<PatientRecord>(row.data);
 }
 
-export function decryptPatient(row: Patient): DecryptedPatient {
+export function decryptPatient(row: Pick<Patient, "id" | "data" | "createdAt" | "updatedAt">): DecryptedPatient {
   return { ...decryptJson<PatientRecord>(row.data), id: row.id, createdAt: row.createdAt, updatedAt: row.updatedAt };
 }
 

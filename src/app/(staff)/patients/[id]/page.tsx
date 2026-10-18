@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
-import { getIdPhoto, signedConsents } from "@/lib/cases";
+import { idPhotoUrl, signedConsents } from "@/lib/cases";
 import { CONSENT_FORMS } from "@/lib/consent-forms";
 import { canSeePatient, getPatient } from "@/lib/patients";
 import { listAppointments } from "@/lib/queries";
@@ -35,7 +35,7 @@ export default async function PatientPage({ params, searchParams }: { params: Pr
   const [upcoming, past, idPhoto] = await Promise.all([
     listAppointments(user, { patientId: id, startsAt: { gte: new Date(now.getTime() - 12 * 3_600_000) } }),
     listAppointments(user, { patientId: id, startsAt: { lt: new Date(now.getTime() - 12 * 3_600_000) } }, "desc"),
-    getIdPhoto(id),
+    idPhotoUrl(id),
   ]);
   // Administrators can download every consent form the patient has signed.
   const consents = user.role === "ADMIN" ? await signedConsents(id) : [];

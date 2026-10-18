@@ -17,7 +17,7 @@ export function encryptAppointmentFields(service: string, notes?: string) {
 export async function sendBookingConfirmation(appointmentId: string) {
   const appt = await db.appointment.findUniqueOrThrow({
     where: { id: appointmentId },
-    include: { patient: true, doctor: true },
+    include: { patient: true, doctor: { select: { name: true, email: true, phone: true } } },
   });
   const patient = decryptPatient(appt.patient);
   const when = formatDateTime(appt.startsAt);
@@ -53,12 +53,12 @@ export async function sendReminders(now = new Date(), hoursAhead = 24) {
   const until = new Date(now.getTime() + hoursAhead * 3_600_000);
   const due = await db.appointment.findMany({
     where: { status: "BOOKED", reminderSentAt: null, startsAt: { gt: now, lte: until } },
-    include: { patient: true, doctor: true },
+    include: { patient: true, doctor: { select: { name: true, email: true, phone: true } } },
     orderBy: { startsAt: "asc" },
   });
 
   let patientReminders = 0;
-  const byDoctor = new Map<string, { doctor: User; lines: string[] }>();
+  const byDoctor = new Map<string, { doctor: Pick<User, "name" | "email" | "phone">; lines: string[] }>();
 
   for (const appt of due) {
     const patient = decryptPatient(appt.patient);

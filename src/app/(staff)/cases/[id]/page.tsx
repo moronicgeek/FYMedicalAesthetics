@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { canSeeCase, canTreat } from "@/lib/access";
-import { caseStatusLabel, getCase, getIdPhoto, isSigned, OUTCOME_LABEL } from "@/lib/cases";
+import { caseStatusLabel, getCase, idPhotoUrl, isSigned, OUTCOME_LABEL } from "@/lib/cases";
 import { CONSENT_FORMS, treatmentValues } from "@/lib/consent-forms";
 import { db } from "@/lib/db";
 import { decryptPatient } from "@/lib/patients";
@@ -71,7 +71,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
   const p = c.consent.patient;
   // Practitioners do IV drips; injections and laser are done by a doctor.
   const clinical = canTreat(user.role, c.type);
-  const [ranges, doctors, onCall, idPhoto, drips] = await Promise.all([getVitalRanges(), listDoctors(), getOnCallDoctorId(), getIdPhoto(c.patientId), getIvDripNames()]);
+  const [ranges, doctors, onCall, idPhoto, drips] = await Promise.all([getVitalRanges(), listDoctors(), getOnCallDoctorId(), idPhotoUrl(c.patientId), getIvDripNames()]);
   const yesAnswers = form.questions.filter((q) => c.consent.answers[q.id] === "yes");
   const signed = isSigned(c.consent);
   const assessed = Boolean(p.dateOfBirth);
@@ -138,7 +138,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
         </dl>
         {idPhoto && (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={idPhoto} alt="Photo of the patient's ID document" className="max-h-56 rounded-lg border border-line bg-white" />
+          <img src={idPhoto} loading="lazy" alt="Photo of the patient's ID document" className="max-h-56 rounded-lg border border-line bg-white" />
         )}
         <table className="table">
           <tbody>
@@ -151,7 +151,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
         {signed && (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={c.consent.signature} alt={`Signature of ${c.consent.signedName}`} className="h-24 rounded-lg border border-line bg-white" />
+            <img src={`/cases/${c.id}/signature/patient`} loading="lazy" alt={`Signature of ${c.consent.signedName}`} className="h-24 rounded-lg border border-line bg-white" />
             <p className="muted">{c.consentEmailedAt ? `Emailed to the patient and clinic on ${formatDateTime(c.consentEmailedAt)}.` : "Not emailed yet."}</p>
             <div className="flex flex-wrap gap-3">
               <form action={resendConsentAction}><input type="hidden" name="caseId" value={c.id} /><button className="btn btn-secondary" type="submit">{c.consentEmailedAt ? "Email it again" : "Email the consent form"}</button></form>
@@ -357,7 +357,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
           <p><span className="font-bold">Notes:</span> {c.closingNotes || <span className="muted">None</span>}</p>
           {c.practitionerSignature && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={c.practitionerSignature} alt={`Signature of ${c.practitioner?.name ?? "practitioner"}`} className="h-24 rounded-lg border border-line bg-white" />
+            <img src={`/cases/${c.id}/signature/closer`} loading="lazy" alt={`Signature of ${c.practitioner?.name ?? "practitioner"}`} className="h-24 rounded-lg border border-line bg-white" />
           )}
         </section>
       )}
