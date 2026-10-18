@@ -4,13 +4,15 @@ import { useActionState } from "react";
 import { ivDripAction, type DripState } from "@/app/actions/settings";
 import type { IvDrip } from "@/lib/settings";
 import { SubmitButton } from "./SubmitButton";
+import { useJumpToError } from "./useJumpToError";
 
 // The IV drips clients and practitioners choose from: add, edit the
 // description shown on the client's check-in card, or remove.
 export function IvDripsForm({ drips }: { drips: IvDrip[] }) {
   const [state, action] = useActionState<DripState, FormData>(ivDripAction, {});
+  const sectionRef = useJumpToError<HTMLElement>(state);
   return (
-    <section className="card space-y-4" aria-labelledby="drips-heading">
+    <section ref={sectionRef} className="card space-y-4" aria-labelledby="drips-heading">
       <h2 id="drips-heading" className="section-title">IV drips</h2>
       <p className="muted">
         Clients tap a drip at check-in and practitioners choose from the same list. The description is shown on the client&rsquo;s card. Removing a drip only

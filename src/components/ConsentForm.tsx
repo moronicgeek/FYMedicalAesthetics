@@ -7,6 +7,7 @@ import { Checkbox, FormErrors, TextArea, TextField } from "./fields";
 import { SignaturePad } from "./SignaturePad";
 import { SubmitButton } from "./SubmitButton";
 import { TreatmentChoice } from "./TreatmentChoice";
+import { useJumpToError } from "./useJumpToError";
 
 // The whole consent form, filled in and signed by the client. With a caseId it
 // completes a case reception has already checked in, starting from `initial`;
@@ -15,12 +16,13 @@ export function ConsentForm({ type, kiosk, caseId, initial = {} }: { type: CaseT
   const chooseTreatment = !caseId;
   const def = CONSENT_FORMS[type];
   const [state, action] = useActionState<ConsentFormState, FormData>(submitConsentAction, {});
+  const formRef = useJumpToError(state);
   const v = state.values ?? initial;
   const e = state.errors ?? {};
   const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <form action={action} className="space-y-8" noValidate>
+    <form ref={formRef} action={action} className="space-y-8" noValidate>
       <input type="hidden" name="formType" value={type} />
       {kiosk && <input type="hidden" name="mode" value="kiosk" />}
       {caseId && <input type="hidden" name="caseId" value={caseId} />}

@@ -6,17 +6,19 @@ import { CLINIC_LINE, CONSENT_FORMS, type CaseType } from "@/lib/consent-forms";
 import { Checkbox, FormErrors, TextField } from "./fields";
 import { SignaturePad } from "./SignaturePad";
 import { SubmitButton } from "./SubmitButton";
+import { useJumpToError } from "./useJumpToError";
 
 // What the patient sees on the tablet: the conditions of the treatment, the
 // acknowledgements to tick, and the signature box. Nothing else.
 export function SignConsentForm({ caseId, type, patientName, treatment }: { caseId: string; type: CaseType; patientName: string; treatment?: string }) {
   const def = CONSENT_FORMS[type];
   const [state, action] = useActionState<ConsentFormState, FormData>(signConsentAction, {});
+  const formRef = useJumpToError(state);
   const v = state.values ?? {};
   const e = state.errors ?? {};
 
   return (
-    <form action={action} className="space-y-8" noValidate>
+    <form ref={formRef} action={action} className="space-y-8" noValidate>
       <input type="hidden" name="caseId" value={caseId} />
       <header className="space-y-1">
         <p className="muted text-sm">Lumiere Clinic · {CLINIC_LINE}</p>

@@ -3,11 +3,13 @@
 import { useActionState } from "react";
 import { exitKioskAction, type ExitState } from "@/app/actions/kiosk";
 import { SubmitButton } from "@/components/SubmitButton";
+import { useJumpToError } from "@/components/useJumpToError";
 
 export function ExitForm({ next }: { next?: string }) {
   const [state, action] = useActionState<ExitState, FormData>(exitKioskAction, {});
+  const formRef = useJumpToError(state);
   return (
-    <form action={action} className="space-y-5">
+    <form ref={formRef} action={action} className="space-y-5">
       {next && <input type="hidden" name="next" value={next} />}
       {state.error && <div className="alert alert-error" role="alert">{state.error}</div>}
       <label className="field" htmlFor="email">

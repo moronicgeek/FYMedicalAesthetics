@@ -5,12 +5,14 @@ import { saveSettingsAction, type SettingsState } from "@/app/actions/settings";
 import { VITAL_FIELDS, type VitalRanges } from "@/lib/vitals";
 import { SelectField } from "./fields";
 import { SubmitButton } from "./SubmitButton";
+import { useJumpToError } from "./useJumpToError";
 
 export function SettingsForm({ ranges, doctors, onCallDoctorId }: { ranges: VitalRanges; doctors: { value: string; label: string }[]; onCallDoctorId: string }) {
   const [state, action] = useActionState<SettingsState, FormData>(saveSettingsAction, {});
+  const formRef = useJumpToError(state);
   const e = state.errors ?? {};
   return (
-    <form action={action} className="space-y-6">
+    <form ref={formRef} action={action} className="space-y-6">
       {state.message && <div className="alert alert-success" role="status">{state.message}</div>}
       <section className="card space-y-4" aria-labelledby="ranges-heading">
         <h2 id="ranges-heading" className="section-title">IV drip vital sign ranges</h2>

@@ -10,6 +10,7 @@ import { IdPhotoField } from "./IdPhotoField";
 import { SearchableSelect } from "./SearchableSelect";
 import { SubmitButton } from "./SubmitButton";
 import { TreatmentChoice } from "./TreatmentChoice";
+import { useJumpToError } from "./useJumpToError";
 
 // The practitioner fills this in with the client: details, the medical history
 // questions from the consent form and, for an IV drip, the vitals.
@@ -34,13 +35,14 @@ export function AssessmentForm({
 }) {
   const def = CONSENT_FORMS[type];
   const [state, action] = useActionState<StepState, FormData>(assessmentAction, {});
+  const formRef = useJumpToError(state);
   const v = state.values ?? initial;
   const e = state.errors ?? {};
   const today = new Date().toISOString().slice(0, 10);
   const iv = type === "IV_DRIP";
 
   return (
-    <form action={action} className="space-y-6" noValidate>
+    <form ref={formRef} action={action} className="space-y-6" noValidate>
       <input type="hidden" name="caseId" value={caseId} />
       <FormErrors errors={state.errors} />
 

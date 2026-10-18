@@ -8,6 +8,7 @@ import { FormErrors, SelectField, TextField } from "./fields";
 import { SignaturePad } from "./SignaturePad";
 import { SubmitButton } from "./SubmitButton";
 import { TreatmentChoice } from "./TreatmentChoice";
+import { useJumpToError } from "./useJumpToError";
 
 export function VitalInputs({ ranges, values, errors }: { ranges: VitalRanges; values: Record<string, string>; errors: Record<string, string> }) {
   return (
@@ -44,10 +45,11 @@ export function VitalInputs({ ranges, values, errors }: { ranges: VitalRanges; v
 
 export function PreVitalsForm({ caseId, ranges, doctors, defaultDoctorId }: { caseId: string; ranges: VitalRanges; doctors: { value: string; label: string }[]; defaultDoctorId?: string }) {
   const [state, action] = useActionState<StepState, FormData>(preVitalsAction, {});
+  const formRef = useJumpToError(state);
   const v = state.values ?? {};
   const e = state.errors ?? {};
   return (
-    <form action={action} className="space-y-5" noValidate>
+    <form ref={formRef} action={action} className="space-y-5" noValidate>
       <input type="hidden" name="caseId" value={caseId} />
       <FormErrors errors={state.errors} />
       <VitalInputs ranges={ranges} values={v} errors={e} />
@@ -60,10 +62,11 @@ export function PreVitalsForm({ caseId, ranges, doctors, defaultDoctorId }: { ca
 
 export function PostVitalsForm({ caseId, ranges, officeUse }: { caseId: string; ranges: VitalRanges; officeUse: { id: string; label: string }[] }) {
   const [state, action] = useActionState<StepState, FormData>(postVitalsAction, {});
+  const formRef = useJumpToError(state);
   const v = state.values ?? {};
   const e = state.errors ?? {};
   return (
-    <form action={action} className="space-y-5" noValidate>
+    <form ref={formRef} action={action} className="space-y-5" noValidate>
       <input type="hidden" name="caseId" value={caseId} />
       <FormErrors errors={state.errors} />
       <div className="grid gap-5 sm:grid-cols-2">
@@ -92,11 +95,12 @@ export function CloseCaseForm({
   initial?: Record<string, string>;
 }) {
   const [state, action] = useActionState<StepState, FormData>(closeCaseAction, {});
+  const formRef = useJumpToError(state);
   const v = state.values ?? initial;
   const e = state.errors ?? {};
   const [count, setCount] = useState((v.notes ?? "").length);
   return (
-    <form action={action} className="space-y-5" noValidate>
+    <form ref={formRef} action={action} className="space-y-5" noValidate>
       <input type="hidden" name="caseId" value={caseId} />
       <FormErrors errors={state.errors} />
       {warning && <div className="alert alert-error">{warning}</div>}

@@ -4,15 +4,17 @@ import { useActionState } from "react";
 import { savePatientAction, type PatientFormState } from "@/app/actions/patients";
 import { Checkbox, FormErrors, RadioGroup, TextArea, TextField } from "./fields";
 import { SubmitButton } from "./SubmitButton";
+import { useJumpToError } from "./useJumpToError";
 
 export function PatientForm({ patientId, initial, submitLabel, kiosk = false }: { patientId?: string; initial?: Record<string, string>; submitLabel: string; kiosk?: boolean }) {
   const [state, action] = useActionState<PatientFormState, FormData>(savePatientAction, { values: initial });
+  const formRef = useJumpToError(state);
   const v = state.values ?? {};
   const e = state.errors ?? {};
   const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <form action={action} className="space-y-8" noValidate>
+    <form ref={formRef} action={action} className="space-y-8" noValidate>
       {patientId && <input type="hidden" name="patientId" value={patientId} />}
       {kiosk && <input type="hidden" name="mode" value="kiosk" />}
       <FormErrors errors={state.errors} />
