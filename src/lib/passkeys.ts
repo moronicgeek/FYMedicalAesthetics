@@ -1,5 +1,5 @@
 import "server-only";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import {
   generateAuthenticationOptions,
   generateRegistrationOptions,
@@ -16,6 +16,16 @@ import { appUrl, clinicName } from "./notify";
 import { relyingParty } from "./passkey-rp";
 
 const CHALLENGE_COOKIE = "fy_passkey";
+
+// In production the site is always APP_URL. Locally the app is opened as
+// localhost or a LAN address, which rarely matches APP_URL in .env, so the
+// address in the browser is used instead.
+async function site() {
+  if (process.env.NODE_ENV === "production") return relyingParty(appUrl());
+  const h = await headers();
+  const host = h.get("host");
+  return relyingParty(host ? `${h.get("x-forwarded-proto") ?? "http"}://${host}` : appUrl());
+}
 const CHALLENGE_MINUTES = 5;
 
 // The challenge is kept server-side and used once, so a captured response
@@ -52,7 +62,7 @@ export async function registrationOptions(user: { id: string; name: string; emai
   const existing = await db.passkey.findMany({ where: { userId: user.id }, select: { credentialId: true, transports: true } });
   const options = await generateRegistrationOptions({
     rpName: clinicName(),
-    rpID: relyingParty(appUrl()).rpID,
+    rpID: (await site()).rpID,
     userName: user.email,
     userDisplayName: user.name,
     userID: new TextEncoder().encode(user.id),
@@ -67,7 +77,7 @@ export async function registrationOptions(user: { id: string; name: string; emai
 export async function registerPasskey(userId: string, response: RegistrationResponseJSON, deviceName: string) {
   const challenge = await takeChallenge(userId);
   if (!challenge) return false;
-  const { rpID, origin } = relyingParty(appUrl());
+  const { rpID, origin } = await site();
   const result = await verifyRegistrationResponse({
     response,
     expectedChallenge: challenge,
@@ -91,7 +101,7 @@ export async function registerPasskey(userId: string, response: RegistrationResp
 }
 
 export async function signInOptions(): Promise<PublicKeyCredentialRequestOptionsJSON> {
-  const options = await generateAuthenticationOptions({ rpID: relyingParty(appUrl()).rpID, userVerification: "required" });
+  const options = await generateAuthenticationOptions({ rpID: (await site()).rpID, userVerification: "required" });
   await saveChallenge(options.challenge);
   return options;
 }
@@ -103,7 +113,7 @@ export async function verifyPasskeySignIn(response: AuthenticationResponseJSON):
   if (!challenge || typeof response?.id !== "string") return null;
   const passkey = await db.passkey.findUnique({ where: { credentialId: response.id }, include: { user: { select: { active: true } } } });
   if (!passkey || !passkey.user.active) return null;
-  const { rpID, origin } = relyingParty(appUrl());
+  const { rpID, origin } = await site();
   const result = await verifyAuthenticationResponse({
     response,
     expectedChallenge: challenge,
