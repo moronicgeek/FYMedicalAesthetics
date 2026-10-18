@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { requireUser } from "@/lib/auth";
+import { requireKioskUser } from "@/lib/auth";
 import { Logo } from "@/components/Logo";
 import { TextSize } from "@/components/TextSize";
 
 // Patient-facing check-in screens: no staff navigation and no way to reach
 // other patients' records from here.
 export default async function KioskLayout({ children }: { children: React.ReactNode }) {
-  await requireUser();
+  await requireKioskUser();
   return (
     <div className="flex min-h-screen flex-col">
       <header className="border-t-4 border-b border-t-accent border-b-line bg-header">

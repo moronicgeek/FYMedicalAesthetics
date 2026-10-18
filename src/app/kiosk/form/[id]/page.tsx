@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { requireKioskUser } from "@/lib/auth";
 import { canSeeCase } from "@/lib/access";
 import { getCase } from "@/lib/cases";
 import { dateOfBirthFromSaId } from "@/lib/sa-id";
@@ -10,7 +10,7 @@ export const metadata = { title: "Your consent form" };
 // Injections and laser: the tablet is locked to this client's form, which
 // starts from the check-in details.
 export default async function KioskClientForm({ params }: { params: Promise<{ id: string }> }) {
-  const user = await requireUser();
+  const user = await requireKioskUser();
   const { id } = await params;
   const c = await getCase(id);
   if (!c || c.type === "IV_DRIP" || !canSeeCase(user.role, c.type)) notFound();

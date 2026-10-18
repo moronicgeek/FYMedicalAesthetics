@@ -6,7 +6,7 @@ import bcrypt from "bcryptjs";
 import type { Role, User } from "@prisma/client";
 import { db } from "./db";
 import { audit, clientIp } from "./audit";
-import { unlockTablet } from "./tablet";
+import { isTabletLocked, unlockTablet } from "./tablet";
 import { blindIndex, normaliseEmail, randomToken, sha256 } from "./crypto";
 
 export const SESSION_COOKIE = "fy_session";
@@ -106,9 +106,17 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
   return user;
 });
 
-export async function requireUser(roles?: Role[]): Promise<SessionUser> {
+// A locked tablet still holds the session of the staff member who handed it
+// over, so while it's locked only the patient screens and their actions (which
+// pass kiosk: true) may use that session.
+export async function requireUser(roles?: Role[], { kiosk = false }: { kiosk?: boolean } = {}): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (!kiosk && (await isTabletLocked())) redirect("/kiosk/checkin");
   if (roles && !roles.includes(user.role)) redirect("/dashboard?denied=1");
   return user;
+}
+
+export function requireKioskUser() {
+  return requireUser(undefined, { kiosk: true });
 }

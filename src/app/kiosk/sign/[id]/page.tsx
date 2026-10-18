@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { requireUser } from "@/lib/auth";
+import { requireKioskUser } from "@/lib/auth";
 import { canSeeCase } from "@/lib/access";
 import { getCase } from "@/lib/cases";
 import { SignConsentForm } from "@/components/SignConsentForm";
@@ -8,7 +8,7 @@ export const metadata = { title: "Please read and sign" };
 
 // The tablet is locked to this screen while the patient reads and signs.
 export default async function KioskSign({ params }: { params: Promise<{ id: string }> }) {
-  const user = await requireUser();
+  const user = await requireKioskUser();
   const { id } = await params;
   const c = await getCase(id);
   if (!c || !canSeeCase(user.role, c.type)) notFound();

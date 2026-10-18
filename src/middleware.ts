@@ -18,8 +18,10 @@ export function middleware(req: NextRequest) {
   const isProtected = PROTECTED.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   if (isProtected && !req.cookies.has("fy_session")) return redirectTo(req, "/login");
   // A device in patient check-in mode can only show the check-in screens
-  // until a staff member exits with their password.
-  if (req.cookies.has(KIOSK_COOKIE) && !pathname.startsWith("/kiosk") && !pathname.startsWith("/d/") && pathname !== "/login" && req.method === "GET") {
+  // until a staff member exits with their password. Form posts to other pages
+  // are refused too; requireUser() enforces the same for server actions.
+  if (req.cookies.has(KIOSK_COOKIE) && !pathname.startsWith("/kiosk") && !pathname.startsWith("/d/") && pathname !== "/login") {
+    if (req.method !== "GET" && req.method !== "HEAD") return new NextResponse("Not available in check-in mode.", { status: 403 });
     return redirectTo(req, "/kiosk/checkin");
   }
   // A fresh nonce per page; Next.js reads it from the request's CSP header
