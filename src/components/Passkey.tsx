@@ -10,6 +10,15 @@ function cancelled(e: unknown) {
   return e instanceof Error && (e.name === "NotAllowedError" || e.name === "AbortError");
 }
 
+function signInError(e: unknown) {
+  // Kept in the browser console so a failure on one device can be diagnosed.
+  console.error("Fingerprint sign-in failed", e);
+  if (cancelled(e)) return "Fingerprint sign-in was cancelled. Try again, or use your password below.";
+  if (e instanceof Error && e.name === "SecurityError") return "Fingerprint sign-in isn't set up for this web address. Please use your password and tell the practice administrator.";
+  // Password manager browser extensions that take over passkeys fail this way.
+  return "Fingerprint sign-in didn't work in this browser. If a password manager extension is installed, it may be blocking it. Please use your password.";
+}
+
 function usePlatformAuthenticator() {
   const [available, setAvailable] = useState(false);
   useEffect(() => {
@@ -35,7 +44,7 @@ export function FingerprintSignIn({ kiosk, next }: { kiosk?: boolean; next?: str
         if ("error" in result) setError(result.error);
         else router.replace(result.next);
       } catch (e) {
-        setError(cancelled(e) ? "Fingerprint sign-in was cancelled. Try again, or use your password below." : "Fingerprint sign-in didn't work on this device. Please use your password.");
+        setError(signInError(e));
       }
     });
   }
@@ -76,6 +85,7 @@ export function AddFingerprint() {
         if (saved.error) setError(saved.error);
         else setDone(true);
       } catch (e) {
+        console.error("Fingerprint set-up failed", e);
         if (e instanceof Error && e.name === "InvalidStateError") setError("Fingerprint sign-in is already set up for you on this device.");
         else setError(cancelled(e) ? "Setting up was cancelled. Please try again." : "Fingerprint sign-in could not be set up on this device.");
       }
