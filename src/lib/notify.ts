@@ -1,4 +1,6 @@
 import "server-only";
+import { EMAIL_LOGO_CID, emailHtml } from "./email-html";
+import { LOGO_PNG_BASE64 } from "./logo-png";
 
 // Patients and doctors are messaged by WhatsApp (through Twilio) and email.
 // Appointment messages deliberately leave out treatment details, so they only
@@ -26,7 +28,11 @@ export async function sendEmail(to: string | string[], subject: string, text: st
         to: Array.isArray(to) ? to : [to],
         subject,
         text,
-        attachments: attachments.map((a) => ({ filename: a.filename, content: a.content.toString("base64") })),
+        html: emailHtml(text, CLINIC()),
+        attachments: [
+          { filename: "lumiere-logo.png", content: LOGO_PNG_BASE64, content_type: "image/png", content_id: EMAIL_LOGO_CID },
+          ...attachments.map((a) => ({ filename: a.filename, content: a.content.toString("base64") })),
+        ],
       }),
     });
     return res.ok ? { channel: "email", ok: true } : { channel: "email", ok: false, error: `HTTP ${res.status}` };
