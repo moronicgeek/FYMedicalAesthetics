@@ -5,6 +5,8 @@ Every command uses the `fymedical` profile so nothing lands in another account.
 
 ```sh
 export AWS_PROFILE=fymedical AWS_REGION=eu-west-1
+# Database names used below. Pick your own; they're kept out of the repo on purpose.
+export DB_INSTANCE=<db instance name> DB_NAME=<database name> DB_ADMIN_USER=<admin login> DB_APP_USER=<app login>
 aws sts get-caller-identity   # must show the clinic's account
 cd ~/Code/FYMedicalAesthetics && git checkout main && git pull && npm install
 ```
@@ -29,22 +31,22 @@ the long password. RDS PostgreSQL 15 and later has `rds.force_ssl` on by default
 
 ```sh
 VPC=$(aws ec2 describe-vpcs --filters Name=isDefault,Values=true --query 'Vpcs[0].VpcId' --output text)
-SG=$(aws ec2 create-security-group --group-name fymedical-db --description "FY Medical Postgres" \
+SG=$(aws ec2 create-security-group --group-name "$DB_INSTANCE" --description "FY Medical Postgres" \
       --vpc-id "$VPC" --query GroupId --output text)
 aws ec2 authorize-security-group-ingress --group-id "$SG" --protocol tcp --port 5432 --cidr 0.0.0.0/0
 
 aws rds create-db-instance \
-  --db-instance-identifier fymedical-db \
+  --db-instance-identifier "$DB_INSTANCE" \
   --engine postgres \
   --db-instance-class db.t4g.micro \
   --allocated-storage 20 --storage-type gp3 --storage-encrypted \
-  --db-name fymedical \
-  --master-username fymedical_admin --master-user-password "$DB_PASSWORD" \
+  --db-name "$DB_NAME" \
+  --master-username "$DB_ADMIN_USER" --master-user-password "$DB_PASSWORD" \
   --vpc-security-group-ids "$SG" --publicly-accessible \
   --backup-retention-period 35 --deletion-protection --copy-tags-to-snapshot
 
-aws rds wait db-instance-available --db-instance-identifier fymedical-db
-aws rds describe-db-instances --db-instance-identifier fymedical-db \
+aws rds wait db-instance-available --db-instance-identifier "$DB_INSTANCE"
+aws rds describe-db-instances --db-instance-identifier "$DB_INSTANCE" \
   --query 'DBInstances[0].Endpoint.Address' --output text
 ```
 
@@ -62,21 +64,21 @@ aws guardduty update-detector --detector-id "$DET" --features '[{"Name":"RDS_LOG
 Migrations need the admin login; the running app gets a login that can only read and write rows.
 
 ```sh
-export DATABASE_URL="postgresql://fymedical_admin:$DB_PASSWORD@<endpoint>:5432/fymedical?sslmode=require"
+export DATABASE_URL="postgresql://$DB_ADMIN_USER:$DB_PASSWORD@<endpoint>:5432/$DB_NAME?sslmode=require"
 export DIRECT_URL="$DATABASE_URL"
 npm run db:migrate
 ADMIN_EMAIL=<clinic admin email> ADMIN_PASSWORD='<12+ chars>' ADMIN_NAME='<name>' npm run db:seed
 
 psql "$DATABASE_URL" <<SQL
-CREATE ROLE fymedical_app LOGIN PASSWORD '$APP_DB_PASSWORD';
-GRANT CONNECT ON DATABASE fymedical TO fymedical_app;
-GRANT USAGE ON SCHEMA public TO fymedical_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO fymedical_app;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO fymedical_app;
-ALTER DEFAULT PRIVILEGES FOR ROLE fymedical_admin IN SCHEMA public
-  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO fymedical_app;
-ALTER DEFAULT PRIVILEGES FOR ROLE fymedical_admin IN SCHEMA public
-  GRANT USAGE, SELECT ON SEQUENCES TO fymedical_app;
+CREATE ROLE $DB_APP_USER LOGIN PASSWORD '$APP_DB_PASSWORD';
+GRANT CONNECT ON DATABASE $DB_NAME TO $DB_APP_USER;
+GRANT USAGE ON SCHEMA public TO $DB_APP_USER;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO $DB_APP_USER;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO $DB_APP_USER;
+ALTER DEFAULT PRIVILEGES FOR ROLE $DB_ADMIN_USER IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO $DB_APP_USER;
+ALTER DEFAULT PRIVILEGES FOR ROLE $DB_ADMIN_USER IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO $DB_APP_USER;
 SQL
 ```
 
@@ -91,7 +93,7 @@ SQL
 
    | Variable | Value |
    | --- | --- |
-   | `DATABASE_URL` | the app login: `postgresql://fymedical_app:<APP_DB_PASSWORD>@<endpoint>:5432/fymedical?sslmode=require` |
+   | `DATABASE_URL` | the app login: `postgresql://<app login>:<APP_DB_PASSWORD>@<endpoint>:5432/<database name>?sslmode=require` |
    | `DIRECT_URL` | the admin URL from step 3 (the build uses it for migrations) |
    | `ENCRYPTION_KEY`, `BLIND_INDEX_KEY`, `CRON_SECRET` | from step 1 |
    | `CLINIC_NAME`, `CLINIC_ADDRESS` | clinic details |
@@ -111,7 +113,7 @@ SQL
   matches the instance's endpoint and chains to the bundled Amazon RDS eu-west-1 root (`src/lib/db-url.ts`).
   Leave `sslmode=require` in the URLs; the code adds the rest. Prisma ignores libpq's `verify-full`/`sslrootcert`,
   so don't rely on those. It trusts `rds-ca-rsa2048-g1`, the default for new instances. Check yours with
-  `aws rds describe-db-instances --db-instance-identifier fymedical-db --query 'DBInstances[0].CACertificateIdentifier'`;
+  `aws rds describe-db-instances --db-instance-identifier "$DB_INSTANCE" --query 'DBInstances[0].CACertificateIdentifier'`;
   if it differs, set `RDS_CA_CERTIFICATE` in Amplify to that value. To run Prisma commands from the Mac with the same
   checks: `export DATABASE_URL="$(npx tsx scripts/db-url.ts "$DATABASE_URL")"`.
 - **Custom domain:** *Hosting, Custom domains*, add e.g. `portal.<clinic domain>`, add the DNS records at the registrar,

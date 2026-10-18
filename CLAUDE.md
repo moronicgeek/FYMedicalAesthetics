@@ -34,7 +34,7 @@ Next.js 15 (App Router, server actions) · React 19 · Prisma 6 + PostgreSQL · 
 - **Shared helpers, reuse them**: `listCases` / `OPEN_STATUSES` / `checkInCase` (`src/lib/cases.ts`), `listAppointments` / `listDoctors` (`src/lib/queries.ts`), zod field helpers and `fieldErrors` (`src/lib/validation.ts`), `notifyPatient` / `notifyDoctor` / `sendWhatsApp` (`src/lib/notify.ts`), time helpers in `src/lib/time.ts` (clinic timezone `CLINIC_TIMEZONE`, default Africa/Johannesburg).
 - **CSP**: nonce per request (`src/lib/csp.ts`). No inline scripts or `dangerouslySetInnerHTML` scripts.
 - Comments are sparse and explain why; user-facing copy is plain English for elderly users.
-- **Test data**: never put real usernames, passwords, hostnames, database names or URLs (or password-looking placeholders) in tests, fixtures or docs unless a test genuinely needs them. Use obvious placeholders like `example_user@example-db…/example`. PRs are scanned by GitGuardian.
+- **Test data**: never put real or production-like usernames, passwords, database names, hostnames, domains or URLs in tests, fixtures, docs or `.env.example` unless a test genuinely needs them. That includes made-up values that look real (the clinic's real login or database names on a fake host, or a password-like string). Use obvious placeholders: `example_user`, `example-db`, `example`, `<app login>`. Docs that create real resources take the names from shell variables, not the repo. PRs are scanned by GitGuardian.
 
 ## Messaging
 WhatsApp via Twilio only, no SMS. Clinic-initiated messages must use Meta-approved Content templates (`TWILIO_TEMPLATE_*`, `WHATSAPP_TEMPLATES` in `notify.ts`). Email via Resend; signed consent PDFs go to the patient and `CLINIC_INBOX_EMAIL` (hello@lumiereclinic.co.za).
