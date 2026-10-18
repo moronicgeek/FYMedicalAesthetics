@@ -3,7 +3,6 @@ import { requireUser } from "@/lib/auth";
 import { logoutAction } from "../actions/auth";
 import { Logo } from "@/components/Logo";
 import { StaffNav } from "@/components/StaffNav";
-import { TextSize } from "@/components/TextSize";
 
 const ROLE_LABEL = { ADMIN: "Administrator", DOCTOR: "Doctor", PRACTITIONER: "Practitioner", RECEPTION: "Reception" } as const;
 
@@ -32,7 +31,6 @@ export default async function StaffLayout({ children }: { children: React.ReactN
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-3 sm:px-6">
           <Logo compact />
           <div className="flex flex-wrap items-center gap-3">
-            <TextSize />
             <Link href="/account" className="text-sm underline-offset-2 hover:underline">
               <span className="font-bold">{user.name}</span> <span className="muted">· {ROLE_LABEL[user.role]}</span>
             </Link>
