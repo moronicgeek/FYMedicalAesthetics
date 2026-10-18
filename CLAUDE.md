@@ -16,7 +16,7 @@ Next.js 15 (App Router, server actions) · React 19 · Prisma 6 + PostgreSQL · 
 
 ## Map
 - `src/app/(staff)/` staff pages: dashboard (Today), checkin, cases, patients, appointments, overview, settings, staff, audit
-- `src/app/kiosk/` patient-facing tablet screens (check-in, client form, sign). `/kiosk` self-service consent is kept but unlinked
+- `src/app/kiosk/` patient-facing tablet screens. `/kiosk` is the start screen (client picks the treatment): IV drip → `/kiosk/checkin` (details + drip, consent signed later at `/kiosk/sign/[id]`); injections/laser → `/kiosk/consent/[type]` (whole form, signed). `/kiosk/form/[id]` completes a desk check-in
 - `src/app/d/[token]` doctor's YES/NO approval link · `src/app/api/twilio/inbound` doctor WhatsApp replies · `src/app/api/cron/reminders` reminder job (EventBridge, `CRON_SECRET`)
 - `src/app/actions/` server actions, one file per area
 - `src/lib/` all domain logic; `src/components/` client/UI components

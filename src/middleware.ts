@@ -22,7 +22,7 @@ export function middleware(req: NextRequest) {
   // are refused too; requireUser() enforces the same for server actions.
   if (req.cookies.has(KIOSK_COOKIE) && !pathname.startsWith("/kiosk") && !pathname.startsWith("/d/") && pathname !== "/login") {
     if (req.method !== "GET" && req.method !== "HEAD") return new NextResponse("Not available in check-in mode.", { status: 403 });
-    return redirectTo(req, "/kiosk/checkin");
+    return redirectTo(req, "/kiosk");
   }
   // A fresh nonce per page; Next.js reads it from the request's CSP header
   // and puts it on the scripts it renders.

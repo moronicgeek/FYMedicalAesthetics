@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { checkInAction, type ConsentFormState } from "@/app/actions/cases";
 import { CASE_TYPES, CONSENT_FORMS } from "@/lib/consent-forms";
 import { FormErrors, RadioGroup, TextField } from "./fields";
+import type { CaseType } from "@/lib/consent-forms";
 import type { IvDrip } from "@/lib/settings";
 import { DripCards } from "./DripCards";
 import { SubmitButton } from "./SubmitButton";
@@ -22,14 +23,15 @@ const KIOSK_DESCRIPTIONS = {
 } as const;
 
 // Used by staff on the check-in page, and by the client themselves on the
-// tablet (kiosk), which has a single Continue button.
-export function CheckInForm({ canStartIv = false, ivOnly = false, kiosk = false, drips = [] }: { canStartIv?: boolean; ivOnly?: boolean; kiosk?: boolean; drips?: IvDrip[] }) {
+// tablet (kiosk), which has a single Continue button. With fixedType the
+// treatment was already chosen on the tablet's start screen.
+export function CheckInForm({ canStartIv = false, ivOnly = false, kiosk = false, drips = [], fixedType }: { canStartIv?: boolean; ivOnly?: boolean; kiosk?: boolean; drips?: IvDrip[]; fixedType?: CaseType }) {
   const [state, action] = useActionState<ConsentFormState, FormData>(checkInAction, {});
   const formRef = useJumpToError(state);
   const v = state.values ?? {};
   const e = state.errors ?? {};
   // The drip cards appear once IV drip is chosen.
-  const [type, setType] = useState(v.formType);
+  const [type, setType] = useState(fixedType ?? v.formType);
   return (
     <form ref={formRef} action={action} className="space-y-5" noValidate>
       <FormErrors errors={state.errors} />
@@ -44,9 +46,13 @@ export function CheckInForm({ canStartIv = false, ivOnly = false, kiosk = false,
         <TextField name="emergencyName" label="Emergency contact name" defaultValue={v.emergencyName} error={e.emergencyName} />
         <TextField name="emergencyPhone" label="Emergency contact number" type="tel" inputMode="tel" defaultValue={v.emergencyPhone} error={e.emergencyPhone} />
       </div>
+      {fixedType ? (
+        <input type="hidden" name="formType" value={fixedType} />
+      ) : (
       <div onChange={(ev) => { const t = ev.target as HTMLInputElement; if (t.name === "formType") setType(t.value); }}>
       <RadioGroup name="formType" label="Treatment" required defaultValue={v.formType} error={e.formType} options={CASE_TYPES.filter((t) => !ivOnly || t === "IV_DRIP").map((t) => ({ value: t, label: (kiosk ? KIOSK_DESCRIPTIONS : DESCRIPTIONS)[t] ?? CONSENT_FORMS[t].shortName }))} />
       </div>
+      )}
       {type === "IV_DRIP" && drips.length > 0 && <DripCards drips={drips} defaultValue={v.drip} error={e.drip} forClient={kiosk} />}
       {kiosk ? (
         <SubmitButton className="btn btn-primary btn-lg w-full sm:w-auto" pendingText="Checking you in…">Continue</SubmitButton>

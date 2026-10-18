@@ -8,11 +8,13 @@ doctors, and remind patients and doctors before each appointment.
 
 This is the clinic's process for an IV drip (process flow V4), step by step.
 
-1. **Check-in.** Under **Check in**, reception taps **Hand tablet to client**
-   and the client enters their own first name, surname, ID or passport number,
-   contact number, emergency contact and treatment on the locked tablet. An IV
-   drip client is then checked in straight away, with no consent form at this
-   point, and hands the tablet back (or taps **Next client**). Staff can also
+1. **Check-in.** Under **Check in**, reception taps **Hand tablet to client**.
+   The locked tablet opens on a start screen where the client taps the
+   treatment they are here for. An IV drip client then enters their first
+   name, surname, ID or passport number, contact number and emergency contact,
+   and taps the drip they'd like. They are checked in straight away, with no
+   consent form at this point, and hand the tablet back (or tap **Next
+   client**). Staff can also
    type these details in themselves on the same page. They are filled in on
    the practitioner's form so they aren't asked twice. The client
    joins the **Waiting** list on the Today and Treatments screens. A returning
@@ -55,13 +57,13 @@ waiting list.
 Botox, filler, peel, microneedling and laser treatments are done by a doctor,
 and the client fills in their own form:
 
-1. The client checks in on the tablet as above.
-2. After choosing an injection or laser treatment, the client goes straight on
-   to their consent form, with their check-in details already filled in. (If
-   staff checked them in at the desk instead, they tap **Hand tablet to
-   client** on the waiting list.) The client adds the rest of
-   their details, answers the yes/no medical questions, reads the conditions
-   and signs. The signed form is emailed as for IV drips.
+1. Reception hands the tablet over as above.
+2. After tapping the Botox, filler, peel or microneedling card, or Laser, on
+   the start screen, the client goes straight to that consent form. (If staff
+   checked them in at the desk instead, they tap **Hand tablet to client** on
+   the waiting list and the form starts with their check-in details.) The
+   client enters their details, answers the yes/no medical questions, reads
+   the conditions and signs. The signed form is emailed as for IV drips.
 3. The case moves to **Waiting for the doctor**. The doctor opens it, reviews
    the answers, does the treatment and closes the case by ticking the
    treatment given (Botox, filler, peel, microneedling or other), then the
@@ -87,9 +89,6 @@ shown on the client's card. It starts with Detox, Jetfuel, Glutago, Myers
 Cocktail and Myers Cocktail Plus, with starter descriptions the clinic should
 confirm. Removing a drip hides it from new cases only; past cases keep it.
 
-The original self-service check-in, where the patient fills in and signs the
-whole form on the tablet first, is still in the app under `/kiosk` but no
-longer linked from the staff screens.
 
 ### Past consent forms
 

@@ -20,7 +20,7 @@ export default async function KioskCheckedIn({ params }: { params: Promise<{ id:
         <p className="muted">Reference #{c.code}</p>
       </div>
       <div className="flex flex-wrap justify-center gap-3">
-        <Link className="btn btn-primary btn-lg" href="/kiosk/checkin">Next client</Link>
+        <Link className="btn btn-primary btn-lg" href="/kiosk">Next client</Link>
         <Link className="btn btn-secondary btn-lg" href="/kiosk/exit?next=/cases">Staff: continue</Link>
       </div>
     </div>
