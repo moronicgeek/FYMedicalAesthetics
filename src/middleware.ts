@@ -4,7 +4,7 @@ import { KIOSK_COOKIE } from "./lib/kiosk";
 
 // Cheap first gate: no session cookie means straight to sign-in. Every page
 // and action still validates the session against the database itself.
-const PROTECTED = ["/dashboard", "/checkin", "/patients", "/appointments", "/intake", "/staff", "/audit", "/kiosk", "/cases", "/settings"];
+const PROTECTED = ["/dashboard", "/checkin", "/patients", "/appointments", "/intake", "/staff", "/audit", "/kiosk", "/cases", "/settings", "/account"];
 
 function redirectTo(req: NextRequest, pathname: string) {
   const url = req.nextUrl.clone();

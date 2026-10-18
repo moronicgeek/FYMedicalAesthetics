@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { logoutAction } from "../actions/auth";
 import { Logo } from "@/components/Logo";
@@ -23,6 +24,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
           { href: "/audit", label: "Access log" },
         ]
       : []),
+    { href: "/account", label: "My account" },
   ];
   return (
     <div className="flex min-h-screen flex-col">
@@ -31,9 +33,9 @@ export default async function StaffLayout({ children }: { children: React.ReactN
           <Logo compact />
           <div className="flex flex-wrap items-center gap-3">
             <TextSize />
-            <span className="text-sm">
+            <Link href="/account" className="text-sm underline-offset-2 hover:underline">
               <span className="font-bold">{user.name}</span> <span className="muted">· {ROLE_LABEL[user.role]}</span>
-            </span>
+            </Link>
             <form action={logoutAction}>
               <button type="submit" className="btn btn-secondary">Sign out</button>
             </form>
