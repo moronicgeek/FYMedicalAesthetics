@@ -94,11 +94,17 @@ export async function submitConsentAction(_prev: ConsentFormState, form: FormDat
   const parsed = patientDetails.safeParse(values);
   if (!parsed.success) Object.assign(errors, fieldErrors(parsed.error));
 
+  if (kiosk && !values.caseId) {
+    // IV drip consent is only signed with the practitioner, after the doctor's YES.
+    if (type === "IV_DRIP" || !canSeeCase(user.role, type)) return { errors: { form: "This form can't be filled in here. Please ask reception for help." }, values: echo(values) };
+  }
+  if (kiosk && (values.idNumber?.trim().length ?? 0) < 5) errors.idNumber = "Please enter your ID or passport number.";
+
   const answers = parseHistory(def, values, errors);
   checkAcknowledgements(def, values, errors);
-  // A client completing a checked-in form doesn't choose the treatment; the
-  // doctor does when closing the case.
-  const treatment = values.caseId ? undefined : parseTreatment(def, values, errors);
+  // A client on the tablet doesn't choose the treatment; the doctor does when
+  // closing the case.
+  const treatment = values.caseId || kiosk ? undefined : parseTreatment(def, values, errors);
 
   if (!validSignature(values.signature)) errors.signature = "Please sign in the box.";
 
@@ -127,7 +133,7 @@ export async function submitConsentAction(_prev: ConsentFormState, form: FormDat
   };
 
   // Injections and laser: completing the form the client was handed after
-  // check-in. Otherwise the self-service kiosk, which starts a new case.
+  // check-in. Otherwise a new case, from the tablet's start screen or staff.
   if (values.caseId) {
     await loadOpenCase(values.caseId, user);
     if (!(await completeClientForm(values.caseId, consent))) return { errors: { form: "This form has already been completed." }, values: echo(values) };
@@ -139,7 +145,7 @@ export async function submitConsentAction(_prev: ConsentFormState, form: FormDat
   await audit(user, "consent-signed", "TreatmentCase", created.id);
   // Saved first; the email is best-effort and can be resent from the case.
   await emailConsent(created.id).catch(() => undefined);
-  redirect(kiosk ? `/kiosk/case/${created.id}` : `/cases/${created.id}`);
+  redirect(kiosk ? `/kiosk/case/${created.id}?signed=1` : `/cases/${created.id}`);
 }
 
 export type StepState = { errors?: FieldErrors; values?: Record<string, string>; message?: string };

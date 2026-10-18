@@ -119,7 +119,7 @@ export const getCurrentUser = cache(async (): Promise<SessionUser | null> => {
 export async function requireUser(roles?: Role[], { kiosk = false }: { kiosk?: boolean } = {}): Promise<SessionUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (!kiosk && (await isTabletLocked())) redirect("/kiosk/checkin");
+  if (!kiosk && (await isTabletLocked())) redirect("/kiosk");
   if (roles && !roles.includes(user.role)) redirect("/dashboard?denied=1");
   return user;
 }

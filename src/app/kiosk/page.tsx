@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { requireKioskUser } from "@/lib/auth";
+import { canSeeCase } from "@/lib/access";
 import { CASE_TYPES, CONSENT_FORMS } from "@/lib/consent-forms";
 
 export const metadata = { title: "Patient check-in" };
@@ -9,7 +11,11 @@ const DESCRIPTIONS = {
   LASER: "Laser hair removal or skin rejuvenation",
 } as const;
 
-export default function KioskPage() {
+// The first screen a client sees on the tablet. IV drip clients give their
+// details and drip, and sign later with the practitioner; injection and laser
+// clients go straight to their consent form.
+export default async function KioskPage() {
+  const user = await requireKioskUser();
   return (
     <div className="space-y-6">
       <div>
@@ -17,9 +23,9 @@ export default function KioskPage() {
         <p className="muted mt-2 text-lg">Please choose the treatment you are here for today. You can make the text bigger with the A+ buttons at the top.</p>
       </div>
       <ul className="grid gap-4">
-        {CASE_TYPES.map((t) => (
+        {CASE_TYPES.filter((t) => canSeeCase(user.role, t)).map((t) => (
           <li key={t}>
-            <Link href={`/kiosk/consent/${t.toLowerCase()}`} className="card flex items-center justify-between gap-4 no-underline transition hover:border-brand hover:bg-brand-soft">
+            <Link href={t === "IV_DRIP" ? "/kiosk/checkin" : `/kiosk/consent/${t.toLowerCase()}`} className="card flex items-center justify-between gap-4 no-underline transition hover:border-brand hover:bg-brand-soft">
               <span>
                 <span className="block text-xl font-bold text-brand-dark">{CONSENT_FORMS[t].shortName}</span>
                 <span className="muted block">{DESCRIPTIONS[t]}</span>

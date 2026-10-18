@@ -10,10 +10,11 @@ import { TreatmentChoice } from "./TreatmentChoice";
 import { useJumpToError } from "./useJumpToError";
 
 // The whole consent form, filled in and signed by the client. With a caseId it
-// completes a case reception has already checked in, starting from `initial`;
-// the doctor then chooses the treatment, so the client doesn't.
+// completes a case reception has already checked in, starting from `initial`.
+// On the tablet the doctor chooses the treatment when closing, so the client
+// doesn't.
 export function ConsentForm({ type, kiosk, caseId, initial = {} }: { type: CaseType; kiosk: boolean; caseId?: string; initial?: Record<string, string> }) {
-  const chooseTreatment = !caseId;
+  const chooseTreatment = !caseId && !kiosk;
   const def = CONSENT_FORMS[type];
   const [state, action] = useActionState<ConsentFormState, FormData>(submitConsentAction, {});
   const formRef = useJumpToError(state);
@@ -41,7 +42,7 @@ export function ConsentForm({ type, kiosk, caseId, initial = {} }: { type: CaseT
           <TextField name="firstName" label="First name" required autoComplete="given-name" defaultValue={v.firstName} error={e.firstName} />
           <TextField name="lastName" label="Surname" required autoComplete="family-name" defaultValue={v.lastName} error={e.lastName} />
           <TextField name="dateOfBirth" label="Date of birth" type="date" required max={today} defaultValue={v.dateOfBirth} error={e.dateOfBirth} />
-          <TextField name="idNumber" label="ID number" defaultValue={v.idNumber} error={e.idNumber} />
+          <TextField name="idNumber" label={kiosk ? "ID or passport number" : "ID number"} required={kiosk} defaultValue={v.idNumber} error={e.idNumber} />
           <TextField name="phone" label="Contact number" type="tel" inputMode="tel" required autoComplete="tel" defaultValue={v.phone} error={e.phone} />
           <TextField name="email" label="Email address" type="email" inputMode="email" required autoComplete="email" defaultValue={v.email} error={e.email} hint="We'll email you a copy of this signed form" />
         </div>
