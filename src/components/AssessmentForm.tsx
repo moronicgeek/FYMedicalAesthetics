@@ -55,8 +55,8 @@ export function AssessmentForm({
           <TextField name="lastName" label="Surname" required defaultValue={v.lastName} error={e.lastName} />
           <TextField name="phone" label="Contact number" type="tel" inputMode="tel" required defaultValue={v.phone} error={e.phone} />
           <TextField name="email" label="Email address" type="email" inputMode="email" required defaultValue={v.email} error={e.email} hint="The signed consent form is emailed here" />
-          <TextField name="emergencyName" label="Emergency contact name" defaultValue={v.emergencyName} />
-          <TextField name="emergencyPhone" label="Emergency contact number" type="tel" inputMode="tel" defaultValue={v.emergencyPhone} />
+          <TextField name="emergencyName" label="Emergency contact name" required defaultValue={v.emergencyName} error={e.emergencyName} />
+          <TextField name="emergencyPhone" label="Emergency contact number" type="tel" inputMode="tel" required defaultValue={v.emergencyPhone} error={e.emergencyPhone} />
         </div>
         <IdPhotoField name="idPhoto" onFile={idPhotoOnFile} error={e.idPhoto} />
         {iv && def.treatmentChoice ? (

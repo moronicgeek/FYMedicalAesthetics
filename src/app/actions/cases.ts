@@ -32,7 +32,7 @@ import type { ConsentFormDef } from "@/lib/consent-forms";
 import { getIvDripNames } from "@/lib/settings";
 import { isTabletLocked, lockTablet } from "@/lib/tablet";
 import { validIdPhoto, validSignature } from "@/lib/signature";
-import { echo, fieldErrors, formToObject, isoDate, optional, optionalPhone, phone, required, type FieldErrors } from "@/lib/validation";
+import { echo, emergencyName, emergencyPhone, fieldErrors, formToObject, isoDate, phone, required, type FieldErrors } from "@/lib/validation";
 import { parseVitals, type Vitals } from "@/lib/vitals";
 
 export type ConsentFormState = { errors?: FieldErrors; values?: Record<string, string> };
@@ -78,6 +78,8 @@ const patientDetails = z.object({
   phone,
   email: z.email("Please enter a valid email address. We'll send your signed form here."),
   idNumber: z.string().trim().optional(),
+  emergencyName,
+  emergencyPhone,
   signedName: z.string().trim().min(1, "Please type your full name."),
 });
 
@@ -126,7 +128,7 @@ export async function submitConsentAction(_prev: ConsentFormState, form: FormDat
     treatment,
     answers,
     details: Object.fromEntries(def.detailFields.map((d) => [d.id, values[d.id]?.trim() ?? ""])),
-    emergency: { name: values.emergencyName?.trim() || undefined, phone: values.emergencyPhone?.trim() || undefined },
+    emergency: { name: parsed.data.emergencyName, phone: parsed.data.emergencyPhone },
     signedName: parsed.data.signedName,
     signature: values.signature,
     signedAt: new Date().toISOString(),
@@ -270,8 +272,8 @@ const checkInSchema = z.object({
   lastName: required("the surname"),
   idNumber: z.string().trim().min(5, "Please enter the ID or passport number."),
   phone,
-  emergencyName: optional,
-  emergencyPhone: optionalPhone,
+  emergencyName,
+  emergencyPhone,
 });
 
 // Also used on a locked tablet, where it can only check a client in.
@@ -348,7 +350,7 @@ export async function cancelCaseAction(form: FormData) {
 }
 
 // The check-in details plus what the practitioner adds.
-const assessmentDetails = checkInSchema.pick({ firstName: true, lastName: true, idNumber: true, phone: true }).extend({
+const assessmentDetails = checkInSchema.pick({ firstName: true, lastName: true, idNumber: true, phone: true, emergencyName: true, emergencyPhone: true }).extend({
   dateOfBirth: isoDate("Please enter the date of birth."),
   email: z.email("Please enter a valid email address. The signed form is sent here."),
 });
@@ -392,7 +394,7 @@ export async function assessmentAction(_prev: StepState, form: FormData): Promis
     treatment,
     answers,
     details: Object.fromEntries(def.detailFields.map((d) => [d.id, values[d.id]?.trim() ?? ""])),
-    emergency: { name: values.emergencyName?.trim() || undefined, phone: values.emergencyPhone?.trim() || undefined },
+    emergency: { name: parsed.data.emergencyName, phone: parsed.data.emergencyPhone },
   };
   await saveAssessment(c.id, record, idPhoto, user);
   await audit(user, "assessment-saved", "TreatmentCase", c.id);

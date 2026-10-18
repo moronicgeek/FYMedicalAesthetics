@@ -14,6 +14,10 @@ export const phone = z
 
 export const optionalPhone = z.union([z.literal(""), phone]).optional().transform((v) => v || undefined);
 
+// Every client intake asks for someone to call in an emergency.
+export const emergencyName = required("an emergency contact name");
+export const emergencyPhone = z.string().trim().min(1, "Please enter an emergency contact number.").pipe(phone);
+
 export const isoDate = (message: string) => z.string().regex(/^\d{4}-\d{2}-\d{2}$/, message);
 
 export const SERVICES = [
@@ -47,8 +51,8 @@ export const patientSchema = z
     phone,
     address: optional,
     contactPreference: z.enum(["whatsapp", "email", "both"], { error: "Please choose how we should contact you." }),
-    emergencyName: optional,
-    emergencyPhone: optional,
+    emergencyName,
+    emergencyPhone,
     emergencyRelationship: optional,
     conditions: optional,
     medications: optional,

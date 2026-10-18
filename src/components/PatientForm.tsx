@@ -55,8 +55,8 @@ export function PatientForm({ patientId, initial, submitLabel, kiosk = false }: 
       <section className="card space-y-5" aria-labelledby="emergency-heading">
         <h2 id="emergency-heading" className="section-title">3. Emergency contact</h2>
         <div className="grid gap-5 sm:grid-cols-3">
-          <TextField name="emergencyName" label="Name" defaultValue={v.emergencyName} />
-          <TextField name="emergencyPhone" label="Phone" type="tel" inputMode="tel" defaultValue={v.emergencyPhone} />
+          <TextField name="emergencyName" label="Name" required defaultValue={v.emergencyName} error={e.emergencyName} />
+          <TextField name="emergencyPhone" label="Phone" type="tel" inputMode="tel" required defaultValue={v.emergencyPhone} error={e.emergencyPhone} />
           <TextField name="emergencyRelationship" label="Relationship" defaultValue={v.emergencyRelationship} />
         </div>
       </section>

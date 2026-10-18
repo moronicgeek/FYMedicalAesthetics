@@ -7,6 +7,8 @@ const valid = {
   lastName: "Patel",
   dateOfBirth: "1958-04-12",
   phone: "+27 82 123 4567",
+  emergencyName: "Sipho Patel",
+  emergencyPhone: "+27 82 765 4321",
   contactPreference: "whatsapp",
   consentData: "on",
   consentAccuracy: "on",
@@ -16,6 +18,14 @@ const valid = {
 describe("patient intake validation", () => {
   it("accepts a minimal valid form", () => {
     expect(patientSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it("requires an emergency contact name and number", () => {
+    const r = patientSchema.safeParse({ ...valid, emergencyName: "", emergencyPhone: "" });
+    expect(r.success).toBe(false);
+    const paths = r.error?.issues.map((i) => i.path[0]);
+    expect(paths).toContain("emergencyName");
+    expect(paths).toContain("emergencyPhone");
   });
 
   it("requires consent", () => {

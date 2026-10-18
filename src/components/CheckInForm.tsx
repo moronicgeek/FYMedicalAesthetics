@@ -43,8 +43,8 @@ export function CheckInForm({ canStartIv = false, ivOnly = false, kiosk = false,
       <div className="grid gap-5 sm:grid-cols-2">
         <TextField name="idNumber" label="ID or passport number" required defaultValue={v.idNumber} error={e.idNumber} hint={kiosk ? undefined : "A returning client's details are filled in from this"} />
         <TextField name="phone" label="Contact number" type="tel" inputMode="tel" required defaultValue={v.phone} error={e.phone} />
-        <TextField name="emergencyName" label="Emergency contact name" defaultValue={v.emergencyName} error={e.emergencyName} />
-        <TextField name="emergencyPhone" label="Emergency contact number" type="tel" inputMode="tel" defaultValue={v.emergencyPhone} error={e.emergencyPhone} />
+        <TextField name="emergencyName" label="Emergency contact name" required defaultValue={v.emergencyName} error={e.emergencyName} />
+        <TextField name="emergencyPhone" label="Emergency contact number" type="tel" inputMode="tel" required defaultValue={v.emergencyPhone} error={e.emergencyPhone} />
       </div>
       {fixedType ? (
         <input type="hidden" name="formType" value={fixedType} />
