@@ -3,11 +3,13 @@
 import { useActionState } from "react";
 import { loginAction, type LoginState } from "../actions/auth";
 import { SubmitButton } from "@/components/SubmitButton";
+import { useJumpToError } from "@/components/useJumpToError";
 
 export function LoginForm() {
   const [state, action] = useActionState<LoginState, FormData>(loginAction, {});
+  const formRef = useJumpToError(state);
   return (
-    <form action={action} className="space-y-5" noValidate>
+    <form ref={formRef} action={action} className="space-y-5" noValidate>
       {state.error && <div className="alert alert-error" role="alert">{state.error}</div>}
       <label className="field" htmlFor="email">
         <span className="label">Email address</span>

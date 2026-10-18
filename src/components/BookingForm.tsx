@@ -5,15 +5,17 @@ import { useActionState } from "react";
 import { bookAppointmentAction, type AppointmentFormState } from "@/app/actions/appointments";
 import { Checkbox, FormErrors, SelectField, TextArea } from "./fields";
 import { SubmitButton } from "./SubmitButton";
+import { useJumpToError } from "./useJumpToError";
 
 type Option = { value: string; label: string };
 
 export function BookingForm({ patient, doctors, services, today }: { patient: Option; doctors: Option[]; services: readonly string[]; today: string }) {
   const [state, action] = useActionState<AppointmentFormState, FormData>(bookAppointmentAction, {});
+  const formRef = useJumpToError(state);
   const v = state.values ?? {};
   const e = state.errors ?? {};
   return (
-    <form action={action} className="card space-y-5" noValidate>
+    <form ref={formRef} action={action} className="card space-y-5" noValidate>
       <FormErrors errors={state.errors} />
       <input type="hidden" name="patientId" value={patient.value} />
       <div className="field">

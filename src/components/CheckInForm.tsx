@@ -7,6 +7,7 @@ import { FormErrors, RadioGroup, TextField } from "./fields";
 import type { IvDrip } from "@/lib/settings";
 import { DripCards } from "./DripCards";
 import { SubmitButton } from "./SubmitButton";
+import { useJumpToError } from "./useJumpToError";
 
 const DESCRIPTIONS = {
   IV_DRIP: "IV drip",
@@ -24,12 +25,13 @@ const KIOSK_DESCRIPTIONS = {
 // tablet (kiosk), which has a single Continue button.
 export function CheckInForm({ canStartIv = false, ivOnly = false, kiosk = false, drips = [] }: { canStartIv?: boolean; ivOnly?: boolean; kiosk?: boolean; drips?: IvDrip[] }) {
   const [state, action] = useActionState<ConsentFormState, FormData>(checkInAction, {});
+  const formRef = useJumpToError(state);
   const v = state.values ?? {};
   const e = state.errors ?? {};
   // The drip cards appear once IV drip is chosen.
   const [type, setType] = useState(v.formType);
   return (
-    <form action={action} className="space-y-5" noValidate>
+    <form ref={formRef} action={action} className="space-y-5" noValidate>
       <FormErrors errors={state.errors} />
       {kiosk && <input type="hidden" name="mode" value="kiosk" />}
       <div className="grid gap-5 sm:grid-cols-2">
