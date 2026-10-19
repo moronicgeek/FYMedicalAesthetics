@@ -33,6 +33,7 @@ Next.js 15 (App Router, server actions) · React 19 · Prisma 6 + PostgreSQL · 
 - **Audit**: every read or change of patient data, export, and login-relevant action calls `audit(user, action, entity, id)` from `src/lib/audit.ts`. IP comes from `src/lib/client-ip.ts` (last public X-Forwarded-For entry).
 - **Shared helpers, reuse them**: `listCases` / `OPEN_STATUSES` / `checkInCase` (`src/lib/cases.ts`), `listAppointments` / `listDoctors` (`src/lib/queries.ts`), zod field helpers and `fieldErrors` (`src/lib/validation.ts`), `notifyPatient` / `notifyDoctor` / `sendWhatsApp` (`src/lib/notify.ts`), time helpers in `src/lib/time.ts` (clinic timezone `CLINIC_TIMEZONE`, default Africa/Johannesburg).
 - **CSP**: nonce per request (`src/lib/csp.ts`). No inline scripts or `dangerouslySetInnerHTML` scripts.
+- **Branches and PRs** are named after the feature they deliver: branch `feature/problem-reports` (`fix/...` for bug fixes, `docs/...` for docs only), PR title "Problem reports for staff". Never generic or session-style names such as `claude/project-thread-...`.
 - Comments are sparse and explain why; user-facing copy is plain English for elderly users.
 - **Test data**: never put real usernames, passwords, hostnames, database names or URLs (or password-looking placeholders) in tests, fixtures or docs unless a test genuinely needs them. Use obvious placeholders like `example_user@example-db…/example`. PRs are scanned by GitGuardian.
 
