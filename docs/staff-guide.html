@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lumiere Clinic Staff Guide</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Cormorant+Garamond:wght@500;600&display=swap">
+<style>
+/* Layout: one reading column; a wide "clinic floor" stage for the animated visit, then one block per role. */
+:root {
+  --canvas: #efeeec; --surface: #ffffff; --header: #f7f6f4; --line: #d6d3cf;
+  --ink: #1c1c1c; --muted: #4f4c48; --charcoal: #2b2b2b; --on-charcoal: #f4f2ef;
+  --rose: #a46a5e; --rose-ink: #6e3e35; --rose-soft: #f4ece9;
+  --danger: #a8201a; --danger-soft: #fdecea; --success: #17693a; --success-soft: #e6f4ea;
+  --warning: #7a4f00; --warning-soft: #fff4dc;
+  --solid: #2b2b2b; --on-solid: #ffffff;
+  --floorc: #d9d2c8; --furn: #b9aea2; --furn2: #a39587; --sky: #e4edf0;
+  --sans: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  --serif: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --canvas: #1a1918; --surface: #242321; --header: #201f1d; --line: #3d3a37;
+  --ink: #f1efec; --muted: #c4bfb8; --charcoal: #0f0f0e; --on-charcoal: #f1efec;
+  --rose: #c48a7d; --rose-ink: #e3b3a6; --rose-soft: #33261f;
+  --danger: #ff9b92; --danger-soft: #3a1b18; --success: #8fd6a8; --success-soft: #16301f;
+  --warning: #f2c36b; --warning-soft: #33280f; --solid: #ece7e1; --on-solid: #1a1918; --floorc: #2e2b28; --furn: #4a4440; --furn2: #5a524c; --sky: #2a3438; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --canvas: #1a1918; --surface: #242321; --header: #201f1d; --line: #3d3a37;
+  --ink: #f1efec; --muted: #c4bfb8; --charcoal: #0f0f0e; --on-charcoal: #f1efec;
+  --rose: #c48a7d; --rose-ink: #e3b3a6; --rose-soft: #33261f;
+  --danger: #ff9b92; --danger-soft: #3a1b18; --success: #8fd6a8; --success-soft: #16301f;
+  --warning: #f2c36b; --warning-soft: #33280f; --solid: #ece7e1; --on-solid: #1a1918; --floorc: #2e2b28; --furn: #4a4440; --furn2: #5a524c; --sky: #2a3438; color-scheme: dark; }
+
+body { margin: 0; background: var(--canvas); color: var(--ink); font-family: var(--sans); font-size: 17px; line-height: 1.6; }
+.wrap { max-width: 980px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+:focus-visible { outline: 3px solid var(--rose-ink); outline-offset: 3px; border-radius: 4px; }
+h1, h2, h3 { text-wrap: balance; line-height: 1.2; margin: 0; }
+p { margin: 0; }
+.eyebrow { font-size: .8rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--rose-ink); }
+.muted { color: var(--muted); }
+
+header.top { background: var(--header); border-top: 4px solid var(--rose); border-bottom: 1px solid var(--line); }
+header.top .wrap { padding-block: 28px 32px; display: grid; gap: 18px; }
+.logo { height: 46px; width: auto; display: block; }
+h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(2.1rem, 5vw, 3rem); letter-spacing: .01em; }
+.lede { max-width: 62ch; font-size: 1.08rem; color: var(--muted); }
+.jump { display: flex; flex-wrap: wrap; gap: 8px; }
+.jump a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 1.5px solid var(--line); border-radius: 4px; background: var(--surface); color: var(--ink); font-weight: 700; text-decoration: none; }
+.jump a:hover { border-color: var(--rose); }
+
+section { padding-block: 44px 8px; }
+section > .wrap { display: grid; gap: 18px; }
+h2 { font-family: var(--serif); font-weight: 600; font-size: clamp(1.7rem, 4vw, 2.2rem); }
+.rule { width: 56px; height: 2px; background: var(--rose); }
+
+/* ---- Animated visit ---- */
+.scen { display: flex; flex-wrap: wrap; gap: 8px; }
+.scen button, .ctrl button { font: inherit; font-weight: 700; min-height: 44px; padding: 0 16px; border-radius: 4px; cursor: pointer; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); }
+.scen button[aria-pressed="true"] { background: var(--solid); color: var(--on-solid); border-color: var(--solid); }
+.stage { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.scene { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 24px; padding: 22px; align-items: center; }
+@media (max-width: 680px) { .scene { grid-template-columns: 1fr; padding: 16px; } }
+.caption { display: grid; gap: 8px; min-width: 0; }
+.caption .stepno { font-size: .82rem; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.caption h3 { font-size: 1.3rem; }
+.caption p { color: var(--ink); }
+.flag { justify-self: start; font-size: .82rem; font-weight: 700; padding: 3px 10px; border-radius: 4px; }
+.flag.stop { background: var(--danger-soft); color: var(--danger); }
+.flag.good { background: var(--success-soft); color: var(--success); }
+.flag.lock { background: var(--warning-soft); color: var(--warning); }
+
+.device { border: 10px solid var(--charcoal); border-radius: 14px; background: var(--canvas); min-height: 230px; display: grid; min-width: 0; }
+.device.phone { max-width: 250px; justify-self: center; width: 100%; border-radius: 22px; }
+.screen { padding: 14px; display: grid; gap: 8px; align-content: start; font-size: .86rem; }
+.screen .bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--rose); padding-bottom: 6px; font-family: var(--serif); font-size: 1rem; font-weight: 600; color: var(--rose-ink); letter-spacing: .08em; }
+.screen .bar small { font-family: var(--sans); font-size: .7rem; color: var(--muted); letter-spacing: 0; font-weight: 400; }
+.screen .t { font-weight: 700; font-size: .98rem; }
+.opt { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 7px 10px; display: flex; justify-content: space-between; }
+.opt.pick { border: 2px solid var(--charcoal); }
+.field { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 5px 9px; color: var(--muted); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.vital { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 5px 8px; font-variant-numeric: tabular-nums; }
+.vital b { display: block; font-size: 1rem; }
+.vital.bad { border: 2px solid var(--danger); color: var(--danger); }
+.msg { background: var(--surface); border-radius: 8px; padding: 8px 10px; border: 1px solid var(--line); max-width: 92%; }
+.msg.me { justify-self: end; background: var(--success-soft); border-color: transparent; font-weight: 700; color: var(--success); }
+.sig { height: 54px; border: 1px dashed var(--field, var(--muted)); border-radius: 4px; background: var(--surface); position: relative; }
+.sig svg { position: absolute; inset: 6px 10px; width: calc(100% - 20px); height: 42px; }
+.sig path { stroke: var(--ink); stroke-width: 2; fill: none; stroke-dasharray: 260; stroke-dashoffset: 260; animation: draw 1.6s .3s ease forwards; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+.pill { justify-self: start; font-weight: 700; font-size: .78rem; padding: 3px 9px; border-radius: 4px; background: var(--warning-soft); color: var(--warning); }
+.pill.g { background: var(--success-soft); color: var(--success); }
+.pill.r { background: var(--danger-soft); color: var(--danger); }
+.btnmock { justify-self: start; background: var(--solid); color: var(--on-solid); font-weight: 700; padding: 6px 12px; border-radius: 4px; }
+.alert { background: var(--danger-soft); color: var(--danger); border-radius: 4px; padding: 8px 10px; font-weight: 700; }
+.fp { width: 54px; height: 54px; justify-self: center; color: var(--rose-ink); }
+.screen > * { animation: rise .45s ease both; }
+.screen > *:nth-child(2) { animation-delay: .08s } .screen > *:nth-child(3) { animation-delay: .16s } .screen > *:nth-child(4) { animation-delay: .24s } .screen > *:nth-child(5) { animation-delay: .32s } .screen > *:nth-child(6) { animation-delay: .4s }
+@keyframes rise { from { opacity: .2; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.ctrlrow { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 0 22px 20px; }
+@media (max-width: 680px) { .ctrlrow { padding: 0 16px 16px; } }
+.ctrl { display: flex; gap: 8px; }
+.ctrl .primary { background: var(--solid); color: var(--on-solid); border-color: var(--solid); min-width: 96px; }
+.dots { display: flex; flex-wrap: wrap; gap: 6px; }
+.dots button { width: 28px; height: 28px; padding: 0; border-radius: 4px; border: 1.5px solid var(--line); background: var(--surface); color: var(--muted); font: inherit; font-size: .75rem; font-weight: 700; cursor: pointer; font-variant-numeric: tabular-nums; }
+.dots button.done { background: var(--rose-soft); color: var(--rose-ink); border-color: transparent; }
+.dots button[aria-current="step"] { background: var(--solid); color: var(--on-solid); border-color: var(--solid); }
+
+/* ---- Clinic floor with people ---- */
+.floor { position: relative; border-bottom: 1px solid var(--line); background: var(--header); overflow: hidden; }
+.floor svg { display: block; width: 100%; height: auto; }
+.wall { fill: var(--header); }
+.ground { fill: var(--floorc); }
+.skirting { stroke: var(--line); stroke-width: 2; }
+.sign { font-family: var(--serif); font-size: 26px; font-weight: 600; letter-spacing: 5px; fill: var(--rose-ink); }
+.sign2 { font-family: var(--sans); font-size: 9px; letter-spacing: 6px; fill: var(--rose-ink); }
+.win rect { fill: var(--sky); stroke: var(--line); stroke-width: 3; } .win line { stroke: var(--line); stroke-width: 3; }
+.pot { fill: var(--rose); } .leaf { fill: #6f8f62; }
+.furn rect, .furn path { fill: var(--furn); } .furn .drawer { stroke: var(--header); stroke-width: 2; }
+.desk rect { fill: var(--furn); } .desk .desktop { fill: var(--furn2); } .desk .mon { fill: var(--charcoal); }
+.stand line { stroke: var(--muted); stroke-width: 3; stroke-linecap: round; } .stand .bag { fill: #cfe3ea; stroke: var(--muted); stroke-width: 1.5; }
+.tube { fill: none; stroke: #8fb9c7; stroke-width: 2.5; stroke-dasharray: 90; stroke-dashoffset: 90; transition: stroke-dashoffset 1s ease; }
+.tube.on { stroke-dashoffset: 0; }
+.spot { fill: var(--rose); opacity: .35; transition: cx .8s cubic-bezier(.5,0,.2,1); }
+.mover { transition: transform 1.1s cubic-bezier(.45,0,.25,1); }
+.walking .bob { animation: bob .28s ease-in-out 4 alternate; }
+@keyframes bob { to { transform: translateY(-4px); } }
+.tab { fill: var(--charcoal); } .tabscreen { fill: #e9e4dc; }
+.dphone { opacity: 0; transition: opacity .4s; } .dphone.on { opacity: 1; } .dphone rect { fill: var(--charcoal); }
+.ping { fill: none; stroke: #4cb874; stroke-width: 2; transform-box: fill-box; transform-origin: center; animation: ping 1.4s ease-out infinite; }
+@keyframes ping { from { transform: scale(.4); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+.bubble { position: absolute; transform: translateX(var(--shift, -50%)); max-width: min(240px, 48%); background: var(--surface); color: var(--ink); border: 1.5px solid var(--line); border-radius: 6px; padding: 6px 10px; font-size: .84rem; font-weight: 700; line-height: 1.3; box-shadow: 0 2px 6px rgb(0 0 0 / .08); transition: left .8s cubic-bezier(.5,0,.2,1), bottom .8s; animation: pop .35s ease both; }
+.bubble::after { content: ""; position: absolute; top: 100%; left: var(--tail, 50%); border: 7px solid transparent; border-top-color: var(--line); transform: translateX(-50%); }
+.bubble.stop { background: var(--danger-soft); color: var(--danger); border-color: var(--danger); } .bubble.stop::after { border-top-color: var(--danger); }
+.bubble.good { background: var(--success-soft); color: var(--success); border-color: var(--success); } .bubble.good::after { border-top-color: var(--success); }
+@keyframes pop { from { opacity: 0; transform: translateX(var(--shift, -50%)) translateY(6px); } }
+.tag { position: absolute; bottom: 3px; transform: translateX(-50%); font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+@media (max-width: 520px) { .floor { padding-top: 46px; } .tag { font-size: .6rem; letter-spacing: .02em; } .bubble { font-size: .74rem; padding: 4px 7px; max-width: 62%; } }
+
+/* ---- Why ---- */
+.why { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 680px) { .why { grid-template-columns: 1fr; } }
+.why div { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 18px; display: grid; gap: 6px; align-content: start; }
+.why h3 { font-size: 1.08rem; }
+.why p { color: var(--muted); }
+
+/* ---- Roles ---- */
+.role { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; overflow: hidden; scroll-margin-top: 16px; }
+.role .head { background: var(--charcoal); color: var(--on-charcoal); padding: 18px 22px; display: grid; gap: 4px; }
+.role .head h2 { font-size: 1.9rem; color: var(--on-charcoal); }
+.role .head p { color: var(--on-charcoal); opacity: .85; max-width: 62ch; }
+.role .body { padding: 22px; display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 28px; }
+@media (max-width: 760px) { .role .body { grid-template-columns: 1fr; padding: 18px 16px; } .role .head { padding: 16px; } }
+.role h3 { font-size: .82rem; letter-spacing: .14em; text-transform: uppercase; color: var(--rose-ink); margin-bottom: 10px; }
+ol.steps { list-style: none; margin: 0; padding: 0; counter-reset: s; display: grid; gap: 12px; }
+ol.steps li { counter-increment: s; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; }
+ol.steps li::before { content: counter(s); width: 28px; height: 28px; border-radius: 4px; border: 1.5px solid var(--rose); color: var(--rose-ink); display: grid; place-items: center; font-weight: 700; font-size: .85rem; }
+.side { display: grid; gap: 22px; align-content: start; }
+ul.plain { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.never { background: var(--danger-soft); border-radius: 4px; padding: 14px 16px; }
+.never h3 { color: var(--danger); }
+.never li { color: var(--ink); }
+.menu { display: flex; flex-wrap: wrap; gap: 6px; }
+.menu span { font-size: .85rem; font-weight: 700; padding: 3px 10px; border-radius: 4px; background: var(--header); border: 1px solid var(--line); }
+kbd { font-family: inherit; font-weight: 700; background: var(--header); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+
+table.ranges { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.tablebox { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
+.ranges th, .ranges td { text-align: left; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+.ranges tr:last-child td { border-bottom: 0; }
+.ranges th { font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+
+.faq { display: grid; gap: 8px; }
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; }
+summary { cursor: pointer; padding: 14px 18px; font-weight: 700; min-height: 44px; }
+details p { padding: 0 18px 16px; color: var(--muted); }
+footer { padding-block: 40px 48px; color: var(--muted); font-size: .9rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mover, .spot, .bubble, .tube { transition: none; animation: none; }
+  .ping { animation: none; }
+  .screen > *, .sig path { animation: none; stroke-dashoffset: 0; }
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <img class="logo" src="data:image/png;base64,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" alt="Lumiere Clinic">
+    <div class="eyebrow">Staff guide · Patient care portal</div>
+    <h1>How a visit works at Lumiere</h1>
+    <p class="lede">Every client passes through the same few hands: reception, the tablet, a practitioner or doctor, and back. Watch a visit play out below, then read the part for your own role.</p>
+    <nav class="jump" aria-label="Jump to">
+      <a href="#visit">Watch a visit</a>
+      <a href="#why">Why it matters</a>
+      <a href="#reception">Reception</a>
+      <a href="#practitioner">Practitioner</a>
+      <a href="#doctor">Doctor</a>
+      <a href="#admin">Administrator</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section id="visit">
+  <div class="wrap">
+    <div class="eyebrow">Watch a visit</div>
+    <h2>One client, start to finish</h2>
+    <div class="rule"></div>
+    <p class="muted" style="max-width:62ch">Pick a visit type and watch the client move through the clinic. The person speaking is the one doing that step, and the screen below shows what they see.</p>
+    <div class="scen" role="group" aria-label="Visit type">
+      <button type="button" data-scen="iv" aria-pressed="true">IV drip</button>
+      <button type="button" data-scen="ivstop" aria-pressed="false">IV drip: safety stop</button>
+      <button type="button" data-scen="inj" aria-pressed="false">Injections or laser</button>
+    </div>
+    <div class="stage">
+      <div class="floor" id="floor">
+        <svg viewBox="0 -40 800 300" role="img" aria-label="Clinic floor with the client, receptionist, practitioner and doctor">
+          <rect class="wall" x="0" y="-40" width="800" height="272"/>
+          <rect class="ground" x="0" y="232" width="800" height="28"/>
+          <line class="skirting" x1="0" y1="232" x2="800" y2="232"/>
+          <text class="sign" x="300" y="40" text-anchor="middle">LUMIERE</text>
+          <text class="sign2" x="300" y="58" text-anchor="middle">CLINIC</text>
+          <g class="win"><rect x="420" y="10" width="120" height="80" rx="2"/><line x1="480" y1="10" x2="480" y2="90"/><line x1="420" y1="50" x2="540" y2="50"/></g>
+          <g transform="translate(22 232)"><path class="pot" d="M-12 -26 h24 l-3 26 h-18z"/><path class="leaf" d="M0 -26 C-18 -50 -14 -70 -2 -80 C-4 -60 4 -44 0 -26z M0 -26 C14 -46 22 -56 16 -74 C8 -60 0 -46 0 -26z M0 -26 C-4 -44 -22 -46 -28 -56 C-16 -54 -6 -42 0 -26z"/></g>
+          <!-- waiting chair -->
+          <g class="furn" transform="translate(85 232)"><rect x="-24" y="-102" width="7" height="58" rx="2"/><rect x="-24" y="-50" width="50" height="8" rx="2"/><rect x="-20" y="-42" width="4" height="42"/><rect x="18" y="-42" width="4" height="42"/></g>
+          <!-- IV recliner and drip stand -->
+          <g class="furn" transform="translate(480 232)"><path d="M-40 -110 l10 -4 l14 64 h-10z"/><rect x="-30" y="-52" width="70" height="12" rx="4"/><rect x="30" y="-52" width="22" height="8" rx="3" transform="rotate(14 30 -52)"/><rect x="-20" y="-40" width="5" height="40"/><rect x="25" y="-40" width="5" height="40"/></g>
+          <g class="stand" transform="translate(538 232)"><line x1="0" y1="0" x2="0" y2="-150"/><line x1="-14" y1="0" x2="14" y2="0"/><line x1="-12" y1="-150" x2="12" y2="-150"/><rect class="bag" x="-9" y="-146" width="18" height="28" rx="4"/></g>
+          <path id="tube" class="tube" d="M538 114 C538 160, 520 176, 500 184"/>
+          <!-- doctor's room cabinet -->
+          <g class="furn" transform="translate(780 232)"><rect x="-26" y="-70" width="40" height="70" rx="2"/><line class="drawer" x1="-20" y1="-46" x2="8" y2="-46"/><line class="drawer" x1="-20" y1="-24" x2="8" y2="-24"/></g>
+          <ellipse id="spot" class="spot" cx="0" cy="234" rx="44" ry="7"/>
+          <g id="pRec" transform="translate(300 232)"></g>
+          <!-- reception desk drawn over the receptionist -->
+          <g class="desk" transform="translate(300 232)"><rect x="-52" y="-66" width="104" height="66" rx="2"/><rect class="desktop" x="-58" y="-70" width="116" height="7" rx="2"/><rect class="mon" x="10" y="-100" width="34" height="24" rx="2"/><rect class="mon" x="24" y="-76" width="6" height="6"/></g>
+          <g id="pPrac" transform="translate(592 232)"></g>
+          <g id="pDoc" transform="translate(728 232)"></g>
+          <g id="client" class="mover"><g class="bob"><g id="cStand"></g><g id="cSit"></g></g></g>
+          <g id="tablet" class="mover"><rect class="tab" x="-9" y="-12" width="18" height="24" rx="2"/><rect class="tabscreen" x="-6.5" y="-9" width="13" height="18" rx="1"/></g>
+          <g id="phone" class="dphone"><rect x="-5" y="-9" width="10" height="18" rx="2"/><circle class="ping" cx="0" cy="0" r="14"/></g>
+        </svg>
+        <div class="bubble" id="bubble"></div>
+        <div class="tag" style="left:10.6%">Waiting</div>
+        <div class="tag" style="left:37.5%">Reception</div>
+        <div class="tag" style="left:65%">IV room</div>
+        <div class="tag" style="left:91%">Doctor</div>
+      </div>
+      <div class="scene">
+        <div class="caption" aria-live="polite">
+          <div class="stepno" id="stepno"></div>
+          <h3 id="stepTitle"></h3>
+          <p id="stepText"></p>
+          <span class="flag" id="stepFlag" hidden></span>
+        </div>
+        <div class="device" id="device"><div class="screen" id="screen"></div></div>
+      </div>
+      <div class="ctrlrow">
+        <div class="ctrl">
+          <button type="button" id="prev" aria-label="Previous step">Back</button>
+          <button type="button" id="play" class="primary">Pause</button>
+          <button type="button" id="next" aria-label="Next step">Next</button>
+        </div>
+        <div class="dots" id="dots" role="group" aria-label="Steps"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="why">
+  <div class="wrap">
+    <div class="eyebrow">Why it matters</div>
+    <h2>The system is part of the treatment</h2>
+    <div class="rule"></div>
+    <p class="muted" style="max-width:62ch">The portal is not extra paperwork. Each step protects the client, the doctor and you. Skipping one step can make a treatment unsafe or leave the clinic without proof of consent.</p>
+    <div class="why">
+      <div><h3>It stops unsafe drips</h3><p>The vitals are checked against safe ranges before anything goes to the doctor. If one reading is out of range, the screen says stop and refer, and the client signs nothing.</p></div>
+      <div><h3>A doctor approves every drip</h3><p>No IV drip starts without a doctor's YES. The doctor sees the client's first name, age, drip and vitals on WhatsApp, and the answer is saved on the case.</p></div>
+      <div><h3>Signed consent, every time</h3><p>Clients sign on the tablet. A PDF copy is emailed to them and to hello@lumiereclinic.co.za straight away, so the clinic always has proof of what the client agreed to.</p></div>
+      <div><h3>Private by law (POPIA)</h3><p>Health details are encrypted and stored safely. Every look at a patient's record is logged with who opened it. Staff see only what their role needs.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="reception">
+  <div class="wrap">
+    <article class="role">
+      <div class="head"><div class="eyebrow" style="color:var(--on-charcoal);opacity:.75">Your role</div><h2>Reception</h2><p>You are the first and last face the client sees. You start every visit on the tablet and keep the waiting list moving. You do not treat clients.</p></div>
+      <div class="body">
+        <div>
+          <h3>A visit, step by step</h3>
+          <ol class="steps">
+            <li><div>Greet the client. On <kbd>Check in</kbd>, tap <b>Hand tablet to client</b>. The tablet locks to the client start screen.</div></li>
+            <li><div>Give them the tablet. They tap their treatment: <b>IV drip</b>, <b>Botox, filler, peel or microneedling</b>, or <b>Laser</b>.</div></li>
+            <li><div><b>IV drip:</b> they type their name, ID number, contact number and emergency contact, choose a drip and they are in the queue. <b>Injections or laser:</b> they fill in the whole consent form and sign it.</div></li>
+            <li><div>Take the tablet back. Tap <b>Staff: exit check-in mode</b> and sign in with your <b>fingerprint</b> (or password).</div></li>
+            <li><div>Check that the client shows on the <b>Waiting</b> list on <kbd>Today</kbd>, and let the practitioner or doctor know.</div></li>
+            <li><div>Book any follow-up on <kbd>Appointments</kbd>. Search for the client first. Mark people as arrived, completed or did not attend on <kbd>Today</kbd>.</div></li>
+          </ol>
+        </div>
+        <div class="side">
+          <div><h3>Good to know</h3><ul class="plain">
+            <li>If a client struggles, you can type the details in for them on <kbd>Check in</kbd>.</li>
+            <li>The A+ buttons on the tablet make the text bigger for older clients.</li>
+            <li>A returning client is recognised from their ID number.</li>
+            <li>Every client needs an emergency contact name and number.</li>
+          </ul></div>
+          <div class="never"><h3>Never</h3><ul class="plain">
+            <li>Leave the tablet unlocked on a staff screen with a client.</li>
+            <li>Let a browser save your password on the tablet.</li>
+            <li>Share your sign-in, or sign in for someone else.</li>
+          </ul></div>
+          <div><h3>Your menu</h3><div class="menu"><span>Today</span><span>Check in</span><span>Patients</span><span>Appointments</span></div></div>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section id="practitioner">
+  <div class="wrap">
+    <article class="role">
+      <div class="head"><div class="eyebrow" style="color:var(--on-charcoal);opacity:.75">Your role</div><h2>Practitioner</h2><p>You run IV drips from the queue to the close. Injections, peels, microneedling and laser are doctor-only, so you will not see those clients in the portal.</p></div>
+      <div class="body">
+        <div>
+          <h3>An IV drip, step by step</h3>
+          <ol class="steps">
+            <li><div>Pick the client from the <b>Waiting</b> list on <kbd>Today</kbd> or <kbd>Treatments</kbd>. The details they gave at check-in are already filled in.</div></li>
+            <li><div>Check the details with them. The date of birth comes from the ID number. You can take a photo of their ID.</div></li>
+            <li><div>Go through the medical history questions together, and confirm the drip.</div></li>
+            <li><div>Take the vitals: blood pressure, blood sugar, heart rate and temperature (oxygen is optional). Choose the doctor and tap <b>Submit and check vitals</b>.</div></li>
+            <li><div>Wait for the doctor. The screen updates by itself when they reply. <b>NO, or a reading out of range: stop.</b> Do not give the drip. Refer the client and close the case with a note.</div></li>
+            <li><div>On a <b>YES</b>, tap <b>Hand the tablet to the patient</b>. They read and sign the consent. Take the tablet back with your fingerprint.</div></li>
+            <li><div>Give the drip. Afterwards, record the second set of vitals with the drip's batch number and expiry.</div></li>
+            <li><div>Close the case with a short note (up to 200 characters) and your signature.</div></li>
+          </ol>
+        </div>
+        <div class="side">
+          <div><h3>Good to know</h3><ul class="plain">
+            <li>If the doctor phones you their YES, you may record it, but you must give the doctor's name and the reason.</li>
+            <li>If a client leaves before being seen, remove them from the waiting list.</li>
+            <li>The client signs only after the doctor says YES.</li>
+          </ul></div>
+          <div class="never"><h3>Never</h3><ul class="plain">
+            <li>Start a drip without a doctor's YES on the case.</li>
+            <li>Carry on when the screen says a reading is out of range.</li>
+            <li>Leave a case open at the end of the day.</li>
+          </ul></div>
+          <div><h3>Your menu</h3><div class="menu"><span>Today</span><span>Check in</span><span>Treatments</span><span>Patients</span><span>Appointments</span></div></div>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section id="doctor">
+  <div class="wrap">
+    <article class="role">
+      <div class="head"><div class="eyebrow" style="color:var(--on-charcoal);opacity:.75">Your role</div><h2>Doctor</h2><p>You approve every IV drip, and you treat and close every injection, peel, microneedling and laser visit.</p></div>
+      <div class="body">
+        <div>
+          <h3>Approving an IV drip</h3>
+          <ol class="steps">
+            <li><div>A WhatsApp message arrives with the client's first name and surname initial, age, drip, vitals and a link.</div></li>
+            <li><div>Reply <b>YES</b> or <b>NO</b> with the case number, or tap the link and choose. The practitioner sees your answer straight away.</div></li>
+          </ol>
+          <h3 style="margin-top:22px">Injections, peels, microneedling and laser</h3>
+          <ol class="steps">
+            <li><div>The client has already filled in and signed their form on the tablet. The case shows as <b>Waiting for the doctor</b> on <kbd>Today</kbd>.</div></li>
+            <li><div>Open the case and read the client's answers to the medical questions before you treat.</div></li>
+            <li><div>Treat the client.</div></li>
+            <li><div>Close the case: tick the treatment you gave, add the product or batch, any products sold, your notes and your signature. The treatment appears on the consent PDF.</div></li>
+          </ol>
+        </div>
+        <div class="side">
+          <div><h3>Good to know</h3><ul class="plain">
+            <li>The approval link works once and expires after four hours.</li>
+            <li>Replies are only accepted from your own WhatsApp number.</li>
+            <li>Each morning you get a list of your patients for the next day.</li>
+          </ul></div>
+          <div class="never"><h3>Never</h3><ul class="plain">
+            <li>Forward the WhatsApp approval message. It holds patient details.</li>
+            <li>Treat before reading the client's answers.</li>
+          </ul></div>
+          <div><h3>Your menu</h3><div class="menu"><span>Today</span><span>Treatments</span><span>Patients</span><span>Appointments</span></div></div>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section id="admin">
+  <div class="wrap">
+    <article class="role">
+      <div class="head"><div class="eyebrow" style="color:var(--on-charcoal);opacity:.75">Your role</div><h2>Administrator</h2><p>You can do everything the others do. You also look after staff accounts, clinic settings and the access log.</p></div>
+      <div class="body">
+        <div>
+          <h3>Your regular jobs</h3>
+          <ol class="steps">
+            <li><div><b>New staff:</b> add them on <kbd>Staff</kbd> with the right role. Remove fingerprints there when someone leaves or loses a device.</div></li>
+            <li><div><b>Settings:</b> keep the safe vital ranges, the on-call doctor and the IV drip list up to date. The medical lead should agree the ranges.</div></li>
+            <li><div><b>Access log:</b> check it now and then for anything unusual, such as late-night sign-ins or many patient records opened.</div></li>
+            <li><div><b>Signed consents:</b> download any signed form as a PDF from the patient's record. Downloads are logged.</div></li>
+            <li><div><b>Overview:</b> see how many clients came in by day, week or month.</div></li>
+          </ol>
+        </div>
+        <div class="side">
+          <div><h3>Good to know</h3><ul class="plain">
+            <li>Five wrong passwords lock an account for 15 minutes.</li>
+            <li>Sign-ins last up to 8 hours.</li>
+            <li>Each staff member sets up their own fingerprint on <kbd>My account</kbd>.</li>
+          </ul></div>
+          <div class="never"><h3>Never</h3><ul class="plain">
+            <li>Give someone a role higher than their job needs.</li>
+            <li>Export patient lists to personal email or USB sticks.</li>
+          </ul></div>
+          <div><h3>Your menu</h3><div class="menu"><span>Overview</span><span>Staff</span><span>Settings</span><span>Access log</span><span>and all others</span></div></div>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section id="ranges">
+  <div class="wrap">
+    <div class="eyebrow">For practitioners and doctors</div>
+    <h2>Safe ranges for an IV drip</h2>
+    <div class="rule"></div>
+    <p class="muted" style="max-width:62ch">These are the starting values. The administrator can change them under Settings once the medical lead has confirmed them. The portal always shows the current range next to each box.</p>
+    <div class="tablebox"><table class="ranges">
+      <thead><tr><th>Reading</th><th>Safe range</th><th>Required</th></tr></thead>
+      <tbody>
+        <tr><td>Blood pressure, top number</td><td>90 to 140 mmHg</td><td>Yes</td></tr>
+        <tr><td>Blood pressure, bottom number</td><td>60 to 90 mmHg</td><td>Yes</td></tr>
+        <tr><td>Heart rate</td><td>50 to 100 bpm</td><td>Yes</td></tr>
+        <tr><td>Blood sugar</td><td>3.9 to 11 mmol/L</td><td>Yes</td></tr>
+        <tr><td>Temperature</td><td>35.5 to 37.5 °C</td><td>Yes</td></tr>
+        <tr><td>Oxygen saturation</td><td>95 to 100 %</td><td>Optional</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <div class="eyebrow">Quick answers</div>
+    <h2>When something is different</h2>
+    <div class="rule"></div>
+    <div class="faq">
+      <details><summary>My fingerprint does not work on the tablet</summary><p>Sign in with your email and password instead. You can add the fingerprint again on My account.</p></details>
+      <details><summary>The client gave the tablet back half way through</summary><p>Hand it back to them. Their answers stay on the form until they finish. If they no longer want the treatment, remove them from the waiting list.</p></details>
+      <details><summary>The doctor has not replied</summary><p>Call the doctor. If they say YES on the phone, record it on the case with their name and the reason. Do not start the drip until it is recorded.</p></details>
+      <details><summary>The client is here for a consultation, not a treatment</summary><p>On the tablet start screen, they tap "Register your details". Book them on Appointments.</p></details>
+      <details><summary>I opened the wrong patient's record</summary><p>Close it. Every view is logged, which is normal. Tell the administrator if you think someone opened a record they should not have.</p></details>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer><div class="wrap">Lumiere Clinic patient care portal · Staff guide, October 2026. Confidential patient information: do not share your sign-in.</div></footer>
+
+<script>
+(function () {
+  const sig = '<div class="sig"><svg viewBox="0 0 200 40" aria-hidden="true"><path d="M4 30 C20 4, 30 36, 44 18 S70 6, 78 26 S104 34, 118 14 S150 20, 160 28 S186 12, 196 18"/></svg></div>';
+  const bar = (r) => '<div class="bar">LUMIERE <small>' + r + '</small></div>';
+  const fp = '<svg class="fp" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 11v3a6 6 0 0 1-1 3.4"/><path d="M8.5 9.3A4 4 0 0 1 16 11v2.2"/><path d="M5.6 7.5A7 7 0 0 1 19 11v1.5"/><path d="M8 13v1a8 8 0 0 1-.8 3.5"/><path d="M15.8 15.5a12 12 0 0 1-1.3 4"/><path d="M4.8 15.2A9 9 0 0 0 5 11a7 7 0 0 1 .3-2"/></svg>';
+
+  const S = {
+    handover: { lane: 1, label: 'Client arrives', title: 'Reception hands over the tablet', text: 'Reception taps "Hand tablet to client". The tablet locks to the client screens, so nobody can reach staff pages.', flag: ['lock', 'Tablet locked'],
+      screen: bar('Check in') + '<div class="t">Check in</div><div class="btnmock">Hand tablet to client</div><div class="field">Or type the details in for the client</div>' },
+    choose: (pick) => ({ lane: 0, label: 'Choosing', title: 'The client picks their treatment', text: 'Big buttons and A+ text sizes make it easy for every client.',
+      screen: bar('A · A+ · A++') + '<div class="t">Welcome to Lumiere Clinic</div>' + ['IV drip', 'Botox, filler, peel or microneedling', 'Laser'].map(o => '<div class="opt' + (o === pick ? ' pick' : '') + '">' + o + '<span>›</span></div>').join('') }),
+    ivDetails: { lane: 0, label: 'Checking in', title: 'Details and a drip', text: 'Name, ID number, contact number and emergency contact. Then they tap the drip they would like, or "Not sure". No consent is signed yet.',
+      screen: bar('IV drip') + '<div class="grid2"><div class="field">Ayesha</div><div class="field">Patel</div></div><div class="field">ID 8001015009087</div><div class="field">Emergency contact: Yusuf</div><div class="opt pick">Myers Cocktail<span>✓</span></div>' },
+    queue: { lane: 1, label: 'Waiting', title: 'The client joins the queue', text: 'Reception takes the tablet back with a fingerprint. The client appears on the Waiting list on Today.',
+      screen: bar('Today') + '<div class="t">Waiting</div><div class="opt">Ayesha P. · Myers Cocktail<span class="pill">Waiting</span></div><div class="opt">Thabo M. · Detox<span class="pill">Waiting</span></div>' },
+    assess: { lane: 2, label: 'Assessment', title: 'Practitioner: history and vitals', text: 'The practitioner checks the details, asks the medical history questions and takes the vitals with the client.',
+      screen: bar('Treatments') + '<div class="t">Vital signs</div><div class="grid2"><div class="vital">Blood pressure<b>122/78</b></div><div class="vital">Heart rate<b>72</b></div><div class="vital">Blood sugar<b>5.4</b></div><div class="vital">Temperature<b>36.6</b></div></div><div class="btnmock">Submit and check vitals</div>' },
+    assessBad: { lane: 2, label: 'Assessment', title: 'Practitioner: a reading is out of range', text: 'The blood pressure is too high. The portal checks every reading against the safe ranges as soon as the form is submitted.',
+      screen: bar('Treatments') + '<div class="t">Vital signs</div><div class="grid2"><div class="vital bad">Blood pressure<b>168/104</b></div><div class="vital">Heart rate<b>88</b></div><div class="vital">Blood sugar<b>6.1</b></div><div class="vital">Temperature<b>36.8</b></div></div><div class="btnmock">Submit and check vitals</div>' },
+    stop: { lane: 2, label: 'Stopped', title: 'Stop and refer', text: 'Nothing goes to the doctor and the client signs nothing. The practitioner refers the client to a doctor and closes the case with a note and signature.', flag: ['stop', 'Do not give the drip'], tok: 'stop',
+      screen: bar('Treatments') + '<div class="alert">Out of range. Do not administer the drip. Refer the patient to a doctor now.</div><div class="field">Note: BP 168/104, referred to GP</div>' + sig + '<span class="pill r">Referred</span>' },
+    whatsapp: { lane: 3, label: 'With doctor', title: 'The doctor approves on WhatsApp', text: 'All readings are in range, so the doctor gets the client\'s first name, age, drip and vitals. They reply YES or NO, or tap the link. The practitioner\'s screen updates by itself.', phone: true,
+      screen: '<div class="msg">Lumiere Clinic: IV drip approval #9513<br>Patient: Ayesha P., 46y<br>Drip: Myers Cocktail<br>Vitals: BP 122/78, HR 72, sugar 5.4, temp 36.6<br>Reply YES 9513 to approve or NO 9513 to decline.</div><div class="msg me">YES 9513</div>' },
+    sign: { lane: 0, label: 'Signing', title: 'The client signs the consent', text: 'Only after the doctor\'s YES. The tablet locks to this client\'s consent. The signed PDF is emailed to the client and the clinic inbox.', flag: ['lock', 'Tablet locked to this client'],
+      screen: bar('Consent') + '<div class="t">IV drip consent</div><div class="opt">I have read and understood the risks<span>✓</span></div>' + sig + '<div class="btnmock">Sign and finish</div>' },
+    takeBack: { lane: 2, label: 'Tablet back', title: 'Fingerprint to take the tablet back', text: 'Staff tap "exit check-in mode" and touch the fingerprint reader. No password is typed in front of the client.',
+      screen: bar('Staff sign-in') + fp + '<div class="btnmock" style="justify-self:center">Sign in with fingerprint</div><div class="field" style="text-align:center">Use password instead</div>' },
+    drip: { lane: 2, label: 'Drip running', title: 'The drip, then vitals again', text: 'After the drip, the practitioner records a second set of vitals with the batch number and expiry.',
+      screen: bar('Treatments') + '<div class="t">Vitals after the drip</div><div class="grid2"><div class="vital">Blood pressure<b>118/76</b></div><div class="vital">Heart rate<b>70</b></div></div><div class="field">Batch MC-2291 · Exp 03/2027</div>' },
+    closeIv: { lane: 2, label: 'Done', title: 'Close the case', text: 'A short note and the practitioner\'s signature. The visit is complete and kept on the client\'s record.', flag: ['good', 'Visit complete'], tok: 'good',
+      screen: bar('Treatments') + '<div class="field">Note: tolerated well, no reaction.</div>' + sig + '<span class="pill g">Closed</span>' },
+    injForm: { lane: 0, label: 'Filling in form', title: 'The client fills in their own form', text: 'Details, yes or no medical questions, the conditions, and a signature. The PDF is emailed straight away.',
+      screen: bar('Botox, filler, peel') + '<div class="opt">Are you pregnant or breastfeeding?<span>No</span></div><div class="opt">Any allergies?<span>No</span></div>' + sig + '<div class="btnmock">Sign and finish</div>' },
+    injWait: { lane: 1, label: 'Waiting for doctor', title: 'Waiting for the doctor', text: 'Reception takes the tablet back. The case shows on Today as "Waiting for the doctor". Practitioners do not see it.',
+      screen: bar('Today') + '<div class="t">Waiting for the doctor</div><div class="opt">Lerato K. · Botox, filler, peel<span class="pill">Waiting</span></div>' },
+    injReview: { lane: 3, label: 'With doctor', title: 'The doctor reviews and treats', text: 'The doctor reads the client\'s answers before treating.',
+      screen: bar('Treatments') + '<div class="t">Client answers</div><div class="opt">Pregnant or breastfeeding<span>No</span></div><div class="opt">Allergies<span>No</span></div><div class="opt">Cold sores<span>No</span></div>' },
+    injClose: { lane: 3, label: 'Done', title: 'The doctor closes the case', text: 'Tick the treatment given, add the product or batch, notes and signature. The treatment is added to the consent PDF.', flag: ['good', 'Visit complete'], tok: 'good',
+      screen: bar('Treatments') + '<div class="opt pick">Botox<span>✓</span></div><div class="field">Product / batch: BTX-4471</div>' + sig + '<span class="pill g">Closed</span>' },
+  };
+
+  const SC = (o, sc) => Object.assign({}, o, { sc });
+  const choose = S.choose;
+  S.choose = (pick) => SC(choose(pick), { c: 'wait', t: 'client', say: pick === 'IV drip' ? 'An IV drip, please.' : 'I\'m here for Botox.' });
+  Object.assign(S, {
+    handover: SC(S.handover, { c: 'desk', t: 'client', say: 'Welcome! Please tap your treatment on the tablet.' }),
+    ivDetails: SC(S.ivDetails, { c: 'wait', t: 'client', say: 'My details, my emergency contact, and the Myers Cocktail.' }),
+    queue: SC(S.queue, { c: 'wait', t: 'desk', say: 'Thank you, you\'re on the list.' }),
+    assess: SC(S.assess, { c: 'chair', t: 'prac', say: 'A few questions, then your vitals.' }),
+    assessBad: SC(S.assessBad, { c: 'chair', t: 'prac', say: 'Your blood pressure is high today.' }),
+    stop: SC(S.stop, { c: 'chair', t: 'prac', mood: 'stop', say: 'We can\'t give the drip today. Please see a doctor.' }),
+    whatsapp: SC(S.whatsapp, { c: 'chair', t: 'prac', phone: true, mood: 'good', say: 'Vitals look fine. YES 9513' }),
+    sign: SC(S.sign, { c: 'chair', t: 'client', say: 'I\'ve read it. Signing now.' }),
+    takeBack: SC(S.takeBack, { c: 'chair', t: 'prac', say: 'Fingerprint, and the tablet is mine again.' }),
+    drip: SC(S.drip, { c: 'chair', t: 'prac', drip: true, say: 'Drip running. I\'ll check you again after.' }),
+    closeIv: SC(S.closeIv, { c: 'chair', t: 'prac', mood: 'good', say: 'All done. Case closed and signed.' }),
+    injForm: SC(S.injForm, { c: 'wait', t: 'client', say: 'Filling in my form and signing.' }),
+    injWait: SC(S.injWait, { c: 'wait', t: 'desk', say: 'The doctor will call you in shortly.' }),
+    injReview: SC(S.injReview, { c: 'doctor', t: 'doc', say: 'Let me read your answers first.' }),
+    injClose: SC(S.injClose, { c: 'doctor', t: 'doc', mood: 'good', say: 'All done. Treatment recorded and signed.' }),
+  });
+
+  const scenarios = {
+    iv: [S.handover, S.choose('IV drip'), S.ivDetails, S.queue, S.assess, S.whatsapp, S.sign, S.takeBack, S.drip, S.closeIv],
+    ivstop: [S.handover, S.choose('IV drip'), S.ivDetails, S.queue, S.assessBad, S.stop],
+    inj: [S.handover, S.choose('Botox, filler, peel or microneedling'), S.injForm, S.injWait, S.injReview, S.injClose],
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let scen = 'iv', i = 0, playing = !reduce, timer = null;
+
+  // ---- People on the clinic floor ----
+  const GROUND = 232;
+  function person(o, seated) {
+    const sk = o.skin, top = o.top, low = o.low;
+    let p = '';
+    if (seated) {
+      p += `<rect x="-12" y="-52" width="40" height="12" rx="5" fill="${low}"/><rect x="18" y="-48" width="11" height="46" rx="4" fill="${low}"/><rect x="16" y="-5" width="18" height="5" rx="2" fill="#2a2522"/>`;
+    } else {
+      p += `<rect x="-12" y="-50" width="10" height="48" rx="3" fill="${low}"/><rect x="2" y="-50" width="10" height="48" rx="3" fill="${low}"/><rect x="-15" y="-5" width="14" height="5" rx="2" fill="#2a2522"/><rect x="1" y="-5" width="14" height="5" rx="2" fill="#2a2522"/>`;
+    }
+    const tl = o.coat ? 70 : 56;
+    if (o.coat) p += `<rect x="-18" y="-100" width="36" height="${tl}" rx="9" fill="#f6f5f2" stroke="#c9c4bc" stroke-width="1.5"/><path d="M-6 -100 L0 -86 L6 -100" fill="${top}"/><path d="M-9 -96 C-12 -78 -2 -72 4 -78" fill="none" stroke="#3d4d5c" stroke-width="2"/><circle cx="4" cy="-78" r="2.5" fill="#3d4d5c"/>`;
+    else p += `<rect x="-17" y="-100" width="34" height="${tl}" rx="9" fill="${top}"/>`;
+    if (o.vneck) p += `<path d="M-6 -100 L0 -90 L6 -100z" fill="${sk}"/>`;
+    const arm = o.coat ? '#f6f5f2' : top;
+    p += `<rect x="-26" y="-96" width="9" height="44" rx="4.5" fill="${arm}"${o.coat ? ' stroke="#c9c4bc" stroke-width="1.2"' : ''}/><circle cx="-21.5" cy="-50" r="5" fill="${sk}"/>`;
+    p += o.phoneArm
+      ? `<rect x="17" y="-128" width="9" height="34" rx="4.5" fill="${arm}" transform="rotate(-25 21 -96)"${o.coat ? ' stroke="#c9c4bc" stroke-width="1.2"' : ''}/>`
+      : `<rect x="17" y="-96" width="9" height="44" rx="4.5" fill="${arm}"${o.coat ? ' stroke="#c9c4bc" stroke-width="1.2"' : ''}/><circle cx="21.5" cy="-50" r="5" fill="${sk}"/>`;
+    p += `<rect x="-4" y="-108" width="8" height="10" fill="${sk}"/>`;
+    if (o.hair === 'long') p += `<path d="M-16 -118 C-18 -138 18 -138 16 -118 L17 -96 L-17 -96z" fill="${o.hc}"/>`;
+    p += `<circle cx="0" cy="-120" r="14" fill="${sk}"/>`;
+    if (o.hair === 'short') p += `<path d="M-14 -122 C-15 -138 15 -138 14 -122 C10 -130 -6 -131 -14 -122z" fill="${o.hc}"/>`;
+    if (o.hair === 'long') p += `<path d="M-14 -121 C-14 -138 14 -138 14 -121 C8 -128 -4 -130 -14 -121z" fill="${o.hc}"/>`;
+    if (o.hair === 'bun') p += `<circle cx="0" cy="-138" r="7" fill="${o.hc}"/><path d="M-14 -121 C-15 -138 15 -138 14 -121 C8 -129 -6 -130 -14 -121z" fill="${o.hc}"/>`;
+    if (o.cap) p += `<path d="M-15 -124 C-15 -140 15 -140 15 -124z" fill="${top}"/>`;
+    p += `<circle cx="-5" cy="-120" r="1.7" fill="#2a2522"/><circle cx="5" cy="-120" r="1.7" fill="#2a2522"/><path d="M-4 -113 Q0 -110 4 -113" fill="none" stroke="#2a2522" stroke-width="1.4" stroke-linecap="round"/>`;
+    if (o.glasses) p += `<g fill="none" stroke="#2a2522" stroke-width="1.2"><circle cx="-5" cy="-120" r="4"/><circle cx="5" cy="-120" r="4"/><line x1="-1" y1="-120" x2="1" y2="-120"/></g>`;
+    return p;
+  }
+  const CLIENT = { skin: '#c68e6b', hair: 'long', hc: '#2b1d16', top: '#b0675a', low: '#3f4a5e', vneck: true };
+  $('pRec').innerHTML = person({ skin: '#8d5a3b', hair: 'bun', hc: '#1d1411', top: '#4f6680', low: '#2f3640', vneck: true });
+  $('pPrac').innerHTML = person({ skin: '#e2b896', hair: 'short', hc: '#6b4a2e', top: '#3f8580', low: '#3f8580', cap: true, vneck: true });
+  const docPlain = person({ skin: '#a8714f', hair: 'short', hc: '#1a1a1a', top: '#7b8fa6', low: '#2d3138', coat: true, glasses: true });
+  const docPhone = person({ skin: '#a8714f', hair: 'short', hc: '#1a1a1a', top: '#7b8fa6', low: '#2d3138', coat: true, glasses: true, phoneArm: true });
+  $('cStand').innerHTML = person(CLIENT, false);
+  $('cSit').innerHTML = person(CLIENT, true);
+
+  const SPOTS = { wait: [85, true], desk: [226, false], chair: [478, true], doctor: [668, false] };
+  const STAFF_X = [null, 300, 592, 728];
+  const TAB = {
+    client: (c) => SPOTS[c][1] ? [SPOTS[c][0] + 4, GROUND - 60] : [SPOTS[c][0] + 2, GROUND - 74],
+    desk: () => [270, GROUND - 74], prac: () => [584, GROUND - 74], doc: () => [720, GROUND - 74],
+  };
+  let lastX = null;
+  function scene(s) {
+    const sc = s.sc, [cx, seated] = SPOTS[sc.c];
+    const cl = $('client');
+    cl.style.transform = `translate(${cx}px, ${GROUND}px)`;
+    $('cStand').style.display = seated ? 'none' : '';
+    $('cSit').style.display = seated ? '' : 'none';
+    if (lastX !== null && lastX !== cx && !reduce) { cl.classList.remove('walking'); void cl.getBBox(); cl.classList.add('walking'); }
+    lastX = cx;
+    const [tx, ty] = TAB[sc.t](sc.c);
+    $('tablet').style.transform = `translate(${tx}px, ${ty}px)`;
+    $('tube').classList.toggle('on', !!sc.drip);
+    $('pPrac').style.opacity = scen === 'inj' ? '.3' : '1';
+    $('pDoc').innerHTML = sc.phone ? docPhone : docPlain;
+    const ph = $('phone');
+    ph.setAttribute('transform', 'translate(748 104)');
+    ph.classList.toggle('on', !!sc.phone);
+    const x = s.lane === 0 ? cx : STAFF_X[s.lane];
+    $('spot').setAttribute('cx', x);
+    const headTop = s.lane === 0 && seated ? GROUND - 150 : GROUND - 156;
+    const b = $('bubble');
+    b.className = 'bubble' + (sc.mood ? ' ' + sc.mood : '');
+    b.textContent = sc.say;
+    b.style.left = (x / 800 * 100) + '%';
+    const svgH = $('floor').querySelector('svg').getBoundingClientRect().height;
+    b.style.bottom = (svgH * (260 - headTop) / 300) + 'px';
+    const shift = x < 180 ? 18 : x > 620 ? 82 : 50;
+    b.style.setProperty('--shift', -shift + '%');
+    b.style.setProperty('--tail', shift + '%');
+    void b.offsetWidth; b.style.animation = 'none'; void b.offsetWidth; b.style.animation = '';
+  }
+
+  function render() {
+    const steps = scenarios[scen], s = steps[i];
+    scene(s);
+    $('stepno').textContent = 'Step ' + (i + 1) + ' of ' + steps.length;
+    $('stepTitle').textContent = s.title;
+    $('stepText').textContent = s.text;
+    const f = $('stepFlag');
+    if (s.flag) { f.hidden = false; f.className = 'flag ' + s.flag[0]; f.textContent = s.flag[1]; } else f.hidden = true;
+    $('device').className = 'device' + (s.phone ? ' phone' : '');
+    $('screen').innerHTML = s.screen;
+    const dots = $('dots');
+    dots.innerHTML = '';
+    steps.forEach((_, n) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.textContent = n + 1;
+      b.setAttribute('aria-label', 'Step ' + (n + 1));
+      if (n < i) b.className = 'done';
+      if (n === i) b.setAttribute('aria-current', 'step');
+      b.addEventListener('click', () => { i = n; render(); restart(); });
+      dots.appendChild(b);
+    });
+    $('play').textContent = playing ? 'Pause' : 'Play';
+  }
+  function step(d) { const n = scenarios[scen].length; i = (i + d + n) % n; render(); }
+  function restart() { clearInterval(timer); if (playing) timer = setInterval(() => {
+    if (i === scenarios[scen].length - 1) { i = 0; render(); } else step(1);
+  }, 5200); }
+  $('next').addEventListener('click', () => { step(1); restart(); });
+  $('prev').addEventListener('click', () => { step(-1); restart(); });
+  $('play').addEventListener('click', () => { playing = !playing; render(); restart(); });
+  document.querySelectorAll('[data-scen]').forEach((b) => b.addEventListener('click', () => {
+    scen = b.dataset.scen; i = 0;
+    document.querySelectorAll('[data-scen]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    render(); restart();
+  }));
+  render(); restart();
+  window.addEventListener('resize', () => scene(scenarios[scen][i]));
+})();
+</script>
+</body>
+</html>
