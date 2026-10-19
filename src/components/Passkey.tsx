@@ -31,7 +31,7 @@ function usePlatformAuthenticator() {
   return available;
 }
 
-export function FingerprintSignIn({ kiosk, next }: { kiosk?: boolean; next?: string }) {
+export function FingerprintSignIn({ kiosk, lock, next }: { kiosk?: boolean; lock?: boolean; next?: string }) {
   const available = usePlatformAuthenticator();
   const router = useRouter();
   const [error, setError] = useState<string>();
@@ -44,7 +44,7 @@ export function FingerprintSignIn({ kiosk, next }: { kiosk?: boolean; next?: str
       try {
         const optionsJSON = await passkeySignInOptionsAction();
         const response = await startAuthentication({ optionsJSON });
-        const result = await passkeySignInAction(response, { kiosk, next });
+        const result = await passkeySignInAction(response, { kiosk, lock, next });
         if ("error" in result) setError(result.error);
         else router.replace(result.next);
       } catch (e) {
