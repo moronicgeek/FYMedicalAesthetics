@@ -335,14 +335,18 @@ export async function getCase(id: string) {
   return { ...decryptCase(rest), doctor, practitioner };
 }
 
-export function doctorRequestMessage(c: { code: string; consent: CaseRecord; preVitals: Vitals }, link: string): WhatsAppMessage {
+// Meta rejects a template that ends with a variable, and a URL button needs a
+// fixed address with only the end variable, so the template gets just the
+// token ({{5}}) for its "Open case" button: https://<APP_URL>/d/{{5}}.
+export function doctorRequestMessage(c: { code: string; consent: CaseRecord; preVitals: Vitals }, token: string): WhatsAppMessage {
+  const link = `${appUrl()}/d/${token}`;
   const p = c.consent.patient;
   const patient = `${p.firstName} ${p.lastName.charAt(0).toUpperCase()}., ${ageFrom(p.dateOfBirth)}y`;
   const drip = c.consent.treatment || "Not specified";
   const vitals = formatVitals(c.preVitals);
   return {
     template: "doctorApproval",
-    variables: [c.code, patient, drip, vitals, link],
+    variables: [c.code, patient, drip, vitals, token],
     fallbackText: [
       `${clinicName()}: IV drip approval #${c.code}`,
       `Patient: ${patient}`,
@@ -401,7 +405,7 @@ async function sendDoctorRequest(caseId: string, token: string, phone: string | 
   if (!phone) return false;
   const c = await getCase(caseId);
   if (!c?.preVitals) return false;
-  const result = await sendWhatsApp(normalisePhone(phone), doctorRequestMessage({ ...c, preVitals: c.preVitals }, `${appUrl()}/d/${token}`));
+  const result = await sendWhatsApp(normalisePhone(phone), doctorRequestMessage({ ...c, preVitals: c.preVitals }, token));
   return result.ok;
 }
 

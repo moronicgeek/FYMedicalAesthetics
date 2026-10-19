@@ -239,12 +239,14 @@ for patients who choose it). There is no SMS.
    | --- | --- | --- |
    | `TWILIO_TEMPLATE_BOOKING` | Utility | Hello {{1}}, your appointment with {{2}} at Lumiere Clinic is booked for {{3}}. Please call us if you need to change it. |
    | `TWILIO_TEMPLATE_REMINDER` | Utility | Hello {{1}}, this is a reminder of your appointment with {{2}} at Lumiere Clinic on {{3}}. Please call us if you can't make it. |
-   | `TWILIO_TEMPLATE_DOCTOR_APPROVAL` | Utility | Lumiere Clinic IV drip approval #{{1}}. Patient: {{2}}. Drip: {{3}}. Vitals: {{4}}. Reply YES {{1}} to approve or NO {{1}} to decline, or open {{5}} |
+   | `TWILIO_TEMPLATE_DOCTOR_APPROVAL` | Utility | Lumiere Clinic IV drip approval #{{1}}. Patient: {{2}}. Drip: {{3}}. Vitals: {{4}}. Reply YES {{1}} to approve or NO {{1}} to decline. |
 
-   The variables must stay in that order. Quick-reply buttons labelled **YES**
-   and **NO** can be added to the approval template: a tap is read the same as
-   typing the word, as long as only one case is waiting for that doctor (the
-   app asks for the case number otherwise).
+   The variables must stay in that order. Give the approval template a URL
+   button "Open case" with the address `https://<your domain>/d/{{5}}` (the app
+   fills `{{5}}` with the one-time token; Meta won't accept a template that
+   ends with a variable). Quick-reply buttons labelled **YES** and **NO** can
+   be added too: a tap is read the same as typing the word, as long as only one
+   case is waiting for that doctor (the app asks for the case number otherwise).
 3. Until a template is approved, the app sends the same text as a plain
    message. That works in Twilio's WhatsApp sandbox and within the 24-hour
    window, which is enough for testing.
