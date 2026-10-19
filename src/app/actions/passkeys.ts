@@ -7,7 +7,7 @@ import { audit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { safeNext } from "@/lib/kiosk";
 import { registerPasskey, registrationOptions, signInOptions, verifyPasskeySignIn } from "@/lib/passkeys";
-import { unlockTablet } from "@/lib/tablet";
+import { lockTablet, unlockTablet } from "@/lib/tablet";
 
 export type PasskeyOptionsResult = { options: PublicKeyCredentialCreationOptionsJSON } | { error: string };
 
@@ -50,7 +50,7 @@ export async function passkeySignInOptionsAction(): Promise<PublicKeyCredentialR
 
 // Returns where to go next rather than redirecting, so the browser code that
 // started the fingerprint prompt decides when to leave the page.
-export async function passkeySignInAction(response: AuthenticationResponseJSON, opts: { kiosk?: boolean; next?: string } = {}): Promise<{ error: string } | { next: string }> {
+export async function passkeySignInAction(response: AuthenticationResponseJSON, opts: { kiosk?: boolean; lock?: boolean; next?: string } = {}): Promise<{ error: string } | { next: string }> {
   // A locked tablet's sign-in page still holds the previous staff session.
   if (opts.kiosk) await requireKioskUser();
   const userId = await verifyPasskeySignIn(response);
@@ -63,6 +63,11 @@ export async function passkeySignInAction(response: AuthenticationResponseJSON, 
     await unlockTablet();
     await audit({ id: userId }, "kiosk-exit", "Device");
     return { next: safeNext(opts.next) };
+  }
+  if (opts.lock) {
+    await lockTablet();
+    await audit({ id: userId }, "kiosk-start", "Device");
+    return { next: "/kiosk" };
   }
   return { next: "/dashboard" };
 }
