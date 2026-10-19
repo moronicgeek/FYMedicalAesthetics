@@ -107,6 +107,22 @@ export function echo(values: Record<string, string>): Record<string, string> {
   return rest;
 }
 
+// No answer on our forms needs more than this; signatures and ID photos are
+// checked on their own (src/lib/signature.ts).
+export const MAX_FIELD_LENGTH = 2000;
+const IMAGE_FIELDS = new Set(["signature", "idPhoto"]);
+
+// The form state to send back when an answer is too long, without the long
+// answers themselves; null when every answer fits.
+export function tooLong(values: Record<string, string>): { errors: FieldErrors; values: Record<string, string> } | null {
+  const errors: FieldErrors = {};
+  for (const [k, v] of Object.entries(values)) {
+    if (!IMAGE_FIELDS.has(k) && v.length > MAX_FIELD_LENGTH) errors[k] = "This answer is too long. Please shorten it.";
+  }
+  if (!Object.keys(errors).length) return null;
+  return { errors, values: Object.fromEntries(Object.entries(echo(values)).filter(([k]) => !errors[k])) };
+}
+
 export function fieldErrors(error: z.ZodError): FieldErrors {
   const out: FieldErrors = {};
   for (const issue of error.issues) {

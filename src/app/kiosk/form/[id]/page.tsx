@@ -1,5 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { requireKioskUser } from "@/lib/auth";
+import { kioskMayOpenCase } from "@/lib/tablet";
+import { FormClosed } from "@/components/FormClosed";
 import { canSeeCase } from "@/lib/access";
 import { getCase } from "@/lib/cases";
 import { dateOfBirthFromSaId } from "@/lib/sa-id";
@@ -12,6 +14,7 @@ export const metadata = { title: "Your consent form" };
 export default async function KioskClientForm({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireKioskUser();
   const { id } = await params;
+  if (!(await kioskMayOpenCase(id))) return <FormClosed />;
   const c = await getCase(id);
   if (!c || c.type === "IV_DRIP" || !canSeeCase(user.role, c.type)) notFound();
   if (c.status !== "QUEUED") redirect(`/kiosk/case/${id}?signed=1`);

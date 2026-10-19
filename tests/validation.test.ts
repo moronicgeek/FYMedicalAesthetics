@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { canSeeService, servicesFor } from "../src/lib/access";
-import { patientSchema } from "../src/lib/validation";
+import { MAX_FIELD_LENGTH, patientSchema, tooLong } from "../src/lib/validation";
 
 const valid = {
   firstName: "Amina",
@@ -53,5 +53,17 @@ describe("doctor-only bookings", () => {
     expect(canSeeService("RECEPTION", "Laser treatment")).toBe(true);
     expect(canSeeService("DOCTOR", "Dermal fillers")).toBe(true);
     expect(servicesFor("PRACTITIONER")).toEqual(["Consultation", "Follow-up", "Other"]);
+  });
+});
+
+describe("answer length", () => {
+  it("accepts normal answers and leaves signatures to their own check", () => {
+    expect(tooLong({ firstName: "Amina", signature: "x".repeat(MAX_FIELD_LENGTH + 1) })).toBeNull();
+  });
+
+  it("refuses an over-long answer without sending it back", () => {
+    const result = tooLong({ firstName: "Amina", conditions: "x".repeat(MAX_FIELD_LENGTH + 1) });
+    expect(result?.errors.conditions).toBeDefined();
+    expect(result?.values).toEqual({ firstName: "Amina" });
   });
 });
