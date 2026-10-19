@@ -15,7 +15,7 @@ Next.js 15 (App Router, server actions) · React 19 · Prisma 6 + PostgreSQL · 
 - CI (`.github/workflows/ci.yml`) runs lint, test, build on every PR. Run all three before pushing.
 
 ## Map
-- `src/app/(staff)/` staff pages: dashboard (Today), checkin, cases, patients, appointments, overview, settings, staff, audit
+- `src/app/(staff)/` staff pages: dashboard (Today), checkin, cases, patients, appointments, overview, settings, staff, audit, report (staff "Report a problem" form) and problems (admin list of reports, emailed to `PROBLEM_REPORT_EMAIL` without what was typed)
 - `src/app/kiosk/` patient-facing tablet screens. `/kiosk` is the start screen (client picks the treatment): IV drip → `/kiosk/checkin` (details + drip, consent signed later at `/kiosk/sign/[id]`); injections/laser → `/kiosk/consent/[type]` (whole form, signed). `/kiosk/form/[id]` completes a desk check-in
 - `src/app/d/[token]` doctor's YES/NO approval link · `src/app/api/twilio/inbound` doctor WhatsApp replies · `src/app/api/cron/reminders` reminder job (EventBridge, `CRON_SECRET`)
 - `src/app/actions/` server actions, one file per area

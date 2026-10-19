@@ -9,7 +9,7 @@ frontend:
       commands:
         # Amplify only gives environment variables to the build, not to the
         # running server, so copy the app's settings into .env.production.
-        - env | grep -E '^(DATABASE_URL|ENCRYPTION_KEY|BLIND_INDEX_KEY|CLINIC_|DEFAULT_COUNTRY_CODE|CRON_SECRET|REMINDER_HOURS_AHEAD|RESEND_API_KEY|EMAIL_FROM|TWILIO_|APP_URL|CLINIC_INBOX_EMAIL|RDS_CA_CERTIFICATE)=' >> .env.production
+        - env | grep -E '^(DATABASE_URL|ENCRYPTION_KEY|BLIND_INDEX_KEY|CLINIC_|DEFAULT_COUNTRY_CODE|CRON_SECRET|REMINDER_HOURS_AHEAD|RESEND_API_KEY|EMAIL_FROM|TWILIO_|APP_URL|CLINIC_INBOX_EMAIL|PROBLEM_REPORT_EMAIL|RDS_CA_CERTIFICATE)=' >> .env.production
         # DIRECT_URL can hold the admin login used for migrations; the running
         # app only gets the low-privilege DATABASE_URL.
         - echo "DIRECT_URL=$DATABASE_URL" >> .env.production

@@ -56,6 +56,11 @@ enum CaseOutcome {
   CANCELLED
 }
 
+enum ProblemStatus {
+  OPEN
+  FIXED
+}
+
 enum AppointmentStatus {
   BOOKED
   CHECKED_IN
@@ -65,18 +70,19 @@ enum AppointmentStatus {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  name         String
-  email        String        @unique
-  phone        String?
-  passwordHash String
-  role         Role
-  active       Boolean       @default(true)
-  createdAt    DateTime      @default(now())
-  sessions     Session[]
-  passkeys     Passkey[]
-  appointments Appointment[] @relation("DoctorAppointments")
-  auditLogs    AuditLog[]
+  id                  String          @id @default(cuid())
+  name                String
+  email               String          @unique
+  phone               String?
+  passwordHash        String
+  role                Role
+  active              Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+  sessions            Session[]
+  passkeys            Passkey[]
+  appointments        Appointment[]   @relation("DoctorAppointments")
+  auditLogs           AuditLog[]
+  problemReports      ProblemReport[] @relation("ProblemReporter")
   casesAsPractitioner TreatmentCase[] @relation("CasePractitioner")
   casesAsDoctor       TreatmentCase[] @relation("CaseDoctor")
 }
@@ -131,20 +137,20 @@ model LoginAttempt {
 }
 
 model Patient {
-  id            String        @id @default(cuid())
+  id           String          @id @default(cuid())
   // Encrypted JSON: names, date of birth, contact details, address,
   // emergency contact, medical history and consent details.
-  data          String
-  emailHash     String?
-  phoneHash     String?
-  idNumberHash  String?
+  data         String
+  emailHash    String?
+  phoneHash    String?
+  idNumberHash String?
   // Encrypted JPEG data URL of the patient's ID document, if photographed.
-  idPhoto       String?
-  consentAt     DateTime
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  appointments  Appointment[]
-  cases         TreatmentCase[]
+  idPhoto      String?
+  consentAt    DateTime
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  appointments Appointment[]
+  cases        TreatmentCase[]
 
   @@index([emailHash])
   @@index([phoneHash])
@@ -247,4 +253,22 @@ model Setting {
   key       String   @id
   value     Json
   updatedAt DateTime @updatedAt
+}
+
+// A problem a staff member reported from the app. The page path has IDs
+// removed, and the staff member's words are encrypted in case they mention a
+// patient despite being asked not to.
+model ProblemReport {
+  id        String        @id @default(cuid())
+  userId    String?
+  user      User?         @relation("ProblemReporter", fields: [userId], references: [id], onDelete: SetNull)
+  role      Role
+  path      String
+  details   String
+  device    String?
+  status    ProblemStatus @default(OPEN)
+  fixedAt   DateTime?
+  createdAt DateTime      @default(now())
+
+  @@index([status, createdAt])
 }
