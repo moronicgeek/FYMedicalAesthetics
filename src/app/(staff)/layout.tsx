@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { logoutAction } from "../actions/auth";
 import { Logo } from "@/components/Logo";
 import { StaffNav } from "@/components/StaffNav";
+import { ReportProblemLink } from "@/components/ReportProblemLink";
 
 const ROLE_LABEL = { ADMIN: "Administrator", DOCTOR: "Doctor", PRACTITIONER: "Practitioner", RECEPTION: "Reception" } as const;
 
@@ -21,6 +22,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
           { href: "/staff", label: "Staff" },
           { href: "/settings", label: "Settings" },
           { href: "/audit", label: "Access log" },
+          { href: "/problems", label: "Problem reports" },
         ]
       : []),
     { href: "/account", label: "My account" },
@@ -34,6 +36,7 @@ export default async function StaffLayout({ children }: { children: React.ReactN
             <Link href="/account" className="text-sm underline-offset-2 hover:underline">
               <span className="font-bold">{user.name}</span> <span className="muted">· {ROLE_LABEL[user.role]}</span>
             </Link>
+            <ReportProblemLink />
             <form action={logoutAction}>
               <button type="submit" className="btn btn-secondary">Sign out</button>
             </form>
