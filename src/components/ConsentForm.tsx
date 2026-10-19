@@ -106,8 +106,8 @@ export function ConsentForm({ type, kiosk, caseId, initial = {} }: { type: CaseT
         <TextField name="signedName" label="Type your full name" required autoComplete="name" defaultValue={v.signedName} error={e.signedName} />
         <SignaturePad name="signature" label="Patient signature" error={e.signature} defaultValue={v.signature} />
         <div className="grid gap-5 sm:grid-cols-2">
-          <TextField name="emergencyName" label="Emergency contact name" defaultValue={v.emergencyName} />
-          <TextField name="emergencyPhone" label="Emergency contact number" type="tel" inputMode="tel" defaultValue={v.emergencyPhone} />
+          <TextField name="emergencyName" label="Emergency contact name" required defaultValue={v.emergencyName} error={e.emergencyName} />
+          <TextField name="emergencyPhone" label="Emergency contact number" type="tel" inputMode="tel" required defaultValue={v.emergencyPhone} error={e.emergencyPhone} />
         </div>
         {def.postCare && (
           <div className="alert alert-info">
