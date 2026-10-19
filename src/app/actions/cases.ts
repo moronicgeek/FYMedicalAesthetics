@@ -30,9 +30,9 @@ import {
 } from "@/lib/cases";
 import type { ConsentFormDef } from "@/lib/consent-forms";
 import { getIvDripNames } from "@/lib/settings";
-import { isTabletLocked, lockTablet } from "@/lib/tablet";
+import { isTabletLocked, KIOSK_BUSY_MESSAGE, kioskMayOpenCase, lockTablet, tooManyKioskForms } from "@/lib/tablet";
 import { validIdPhoto, validSignature } from "@/lib/signature";
-import { echo, emergencyName, emergencyPhone, fieldErrors, formToObject, isoDate, phone, required, type FieldErrors } from "@/lib/validation";
+import { echo, emergencyName, emergencyPhone, fieldErrors, formToObject, isoDate, phone, required, tooLong, type FieldErrors } from "@/lib/validation";
 import { parseVitals, type Vitals } from "@/lib/vitals";
 
 export type ConsentFormState = { errors?: FieldErrors; values?: Record<string, string> };
@@ -83,11 +83,18 @@ const patientDetails = z.object({
   signedName: z.string().trim().min(1, "Please type your full name."),
 });
 
+const FORM_CLOSED = "This form is no longer open on this tablet. Please hand the tablet back to reception.";
+
 // Also used on a locked tablet.
 export async function submitConsentAction(_prev: ConsentFormState, form: FormData): Promise<ConsentFormState> {
   const user = await requireKioskUser();
   const values = formToObject(form);
-  const kiosk = values.mode === "kiosk" || (await isTabletLocked());
+  const locked = await isTabletLocked();
+  const kiosk = values.mode === "kiosk" || locked;
+  const long = tooLong(values);
+  if (long) return long;
+  if (locked && values.caseId && !(await kioskMayOpenCase(values.caseId))) return { errors: { form: FORM_CLOSED }, values: echo(values) };
+  if (locked && (await tooManyKioskForms(user))) return { errors: { form: KIOSK_BUSY_MESSAGE }, values: echo(values) };
   const type = values.formType;
   if (!type || !isCaseType(type)) return { errors: { form: "Unknown consent form." }, values: echo(values) };
   const def = CONSENT_FORMS[type];
@@ -280,7 +287,11 @@ const checkInSchema = z.object({
 export async function checkInAction(_prev: ConsentFormState, form: FormData): Promise<ConsentFormState> {
   const user = await requireKioskUser();
   const values = formToObject(form);
-  const kiosk = values.mode === "kiosk" || (await isTabletLocked());
+  const locked = await isTabletLocked();
+  const kiosk = values.mode === "kiosk" || locked;
+  const long = tooLong(values);
+  if (long) return long;
+  if (locked && (await tooManyKioskForms(user))) return { errors: { form: KIOSK_BUSY_MESSAGE }, values: echo(values) };
   const errors: FieldErrors = {};
   const parsed = checkInSchema.safeParse(values);
   if (!parsed.success) Object.assign(errors, fieldErrors(parsed.error));
@@ -298,6 +309,8 @@ export async function checkInAction(_prev: ConsentFormState, form: FormData): Pr
   if (kiosk) {
     const created = await checkInCase({ type, ...parsed.data, drip });
     await audit(user, "checked-in-on-tablet", "TreatmentCase", created.id);
+    // The tablet now opens only this client's form.
+    if (!iv && locked) await lockTablet(created.id);
     redirect(iv ? `/kiosk/checked-in/${created.id}` : `/kiosk/form/${created.id}`);
   }
   const startNow = values.intent === "start";
@@ -306,7 +319,7 @@ export async function checkInAction(_prev: ConsentFormState, form: FormData): Pr
   await audit(user, startNow && iv ? "case-started" : "checked-in", "TreatmentCase", created.id);
   if (!startNow) redirect(`/cases?checkedin=1`);
   if (iv) redirect(`/cases/${created.id}`);
-  await lockTablet();
+  await lockTablet(created.id);
   await audit(user, "handed-to-patient", "TreatmentCase", created.id);
   redirect(`/kiosk/form/${created.id}`);
 }
@@ -326,7 +339,7 @@ export async function handToClientAction(form: FormData) {
   const id = String(form.get("caseId"));
   const c = await loadOpenCase(id, user);
   if (c.status !== "QUEUED" || c.type === "IV_DRIP") redirect(`/cases/${id}`);
-  await lockTablet();
+  await lockTablet(id);
   await audit(user, "handed-to-patient", "TreatmentCase", id);
   redirect(`/kiosk/form/${id}`);
 }
@@ -410,7 +423,7 @@ export async function handToPatientAction(form: FormData) {
   const id = String(form.get("caseId"));
   const c = await loadOpenCase(id, user);
   if (c.status !== "AWAITING_SIGNATURE") redirect(`/cases/${id}`);
-  await lockTablet();
+  await lockTablet(id);
   await audit(user, "handed-to-patient", "TreatmentCase", id);
   redirect(`/kiosk/sign/${id}`);
 }
@@ -419,6 +432,9 @@ export async function handToPatientAction(form: FormData) {
 export async function signConsentAction(_prev: ConsentFormState, form: FormData): Promise<ConsentFormState> {
   const user = await requireKioskUser();
   const values = formToObject(form);
+  const long = tooLong(values);
+  if (long) return long;
+  if (!(await kioskMayOpenCase(values.caseId))) return { errors: { form: FORM_CLOSED }, values: echo(values) };
   const c = await loadOpenCase(values.caseId, user);
   const def = CONSENT_FORMS[c.type];
   const errors: FieldErrors = {};

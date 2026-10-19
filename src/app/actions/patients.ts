@@ -2,11 +2,11 @@
 
 import { redirect } from "next/navigation";
 import { requireKioskUser } from "@/lib/auth";
-import { isTabletLocked } from "@/lib/tablet";
+import { isTabletLocked, KIOSK_BUSY_MESSAGE, tooManyKioskForms } from "@/lib/tablet";
 import { audit } from "@/lib/audit";
 import { canSeePatient, createPatient, findSamePatient, getPatient, patientRecord, toRecord, updatePatient } from "@/lib/patients";
 import { mergePatientRecord } from "@/lib/patient-match";
-import { fieldErrors, formToObject, patientSchema, type FieldErrors } from "@/lib/validation";
+import { fieldErrors, formToObject, patientSchema, tooLong, type FieldErrors } from "@/lib/validation";
 
 export type PatientFormState = { errors?: FieldErrors; values?: Record<string, string> };
 
@@ -15,10 +15,13 @@ export async function savePatientAction(_prev: PatientFormState, form: FormData)
   // register, never edit a record by its ID.
   const user = await requireKioskUser();
   const values = formToObject(form);
+  const long = tooLong(values);
+  if (long) return long;
+  const locked = await isTabletLocked();
+  if (locked && (await tooManyKioskForms(user))) return { errors: { form: KIOSK_BUSY_MESSAGE }, values };
   const parsed = patientSchema.safeParse(values);
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values };
 
-  const locked = await isTabletLocked();
   const patientId = locked ? undefined : values.patientId;
   const kiosk = values.mode === "kiosk" || locked;
   const record = toRecord(parsed.data);

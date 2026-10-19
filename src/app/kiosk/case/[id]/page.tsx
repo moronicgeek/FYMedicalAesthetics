@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireKioskUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { CONSENT_FORMS } from "@/lib/consent-forms";
 import { SuccessTick } from "@/components/SuccessTick";
@@ -8,6 +9,7 @@ export const metadata = { title: "Thank you" };
 // Shown on the tablet after the patient signs. It shows no patient details,
 // only what to do next, and stays open for the practitioner.
 export default async function KioskCase({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ signed?: string }> }) {
+  await requireKioskUser();
   const { id } = await params;
   // Signed after the practitioner handed the tablet over, rather than at the
   // self-service check-in.

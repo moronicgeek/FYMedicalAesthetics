@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requireKioskUser } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { SuccessTick } from "@/components/SuccessTick";
@@ -8,6 +9,7 @@ export const metadata = { title: "You're checked in" };
 // Shown on the tablet after an IV drip client checks themselves in. It shows
 // no patient details.
 export default async function KioskCheckedIn({ params }: { params: Promise<{ id: string }> }) {
+  await requireKioskUser();
   const { id } = await params;
   const c = await db.treatmentCase.findUnique({ where: { id }, select: { id: true, code: true } });
   if (!c) notFound();

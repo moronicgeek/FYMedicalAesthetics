@@ -1,8 +1,10 @@
+import { requireKioskUser } from "@/lib/auth";
 import { PatientForm } from "@/components/PatientForm";
 
 export const metadata = { title: "Register" };
 
-export default function KioskRegister() {
+export default async function KioskRegister() {
+  await requireKioskUser();
   return (
     <div className="space-y-6">
       <div>
