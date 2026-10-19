@@ -16,6 +16,7 @@ import { cancelCaseAction, handToClientAction, handToPatientAction, manualDecisi
 import { AssessmentForm } from "@/components/AssessmentForm";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { CloseCaseForm, PostVitalsForm, PreVitalsForm } from "@/components/CaseForms";
+import { NO_PASSWORD_MANAGER } from "@/components/no-autofill";
 
 export const metadata = { title: "Treatment case" };
 
@@ -295,7 +296,7 @@ export default async function CasePage({ params, searchParams }: { params: Promi
                   <label className="field" htmlFor="decision-reason">
                     <span className="label">Reason it is recorded here</span>
                     <span className="hint">Needed for a YES, e.g. &ldquo;Doctor phoned back, no WhatsApp signal&rdquo;. It is kept with the case.</span>
-                    <input id="decision-reason" name="reason" className="input" maxLength={200} />
+                    <input id="decision-reason" name="reason" className="input" maxLength={200} autoComplete="off" {...NO_PASSWORD_MANAGER} />
                   </label>
                   <div className="flex flex-wrap gap-3">
                     <button className="btn btn-primary" type="submit" name="decision" value="yes">Doctor said YES</button>

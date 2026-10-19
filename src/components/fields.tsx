@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { NO_PASSWORD_MANAGER } from "./no-autofill";
 
 type Common = { name: string; label: string; hint?: string; error?: string; required?: boolean; defaultValue?: string };
 
@@ -23,7 +24,7 @@ function LabelText({ label, required }: { label: string; required?: boolean }) {
   );
 }
 
-export function TextField({ name, label, hint, error, required, defaultValue, type = "text", autoComplete, inputMode, max }: Common & { type?: string; autoComplete?: string; inputMode?: "text" | "tel" | "email" | "numeric"; max?: string }) {
+export function TextField({ name, label, hint, error, required, defaultValue, type = "text", inputMode, max }: Common & { type?: string; inputMode?: "text" | "tel" | "email" | "numeric"; max?: string }) {
   return (
     <label className="field" htmlFor={name}>
       <LabelText label={label} required={required} />
@@ -35,7 +36,8 @@ export function TextField({ name, label, hint, error, required, defaultValue, ty
         className="input"
         defaultValue={defaultValue}
         required={required}
-        autoComplete={autoComplete}
+        autoComplete={type === "password" ? "new-password" : "off"}
+        {...NO_PASSWORD_MANAGER}
         inputMode={inputMode}
         max={max}
         aria-invalid={error ? true : undefined}

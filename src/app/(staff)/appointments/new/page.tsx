@@ -5,6 +5,7 @@ import { listDoctors } from "@/lib/queries";
 import { canSeePatient, getPatient, searchPatients } from "@/lib/patients";
 import { clinicDateString } from "@/lib/time";
 import { servicesFor } from "@/lib/access";
+import { NO_PASSWORD_MANAGER } from "@/components/no-autofill";
 
 export const metadata = { title: "Book appointment" };
 
@@ -39,7 +40,7 @@ export default async function NewAppointment({ searchParams }: { searchParams: P
             <label className="field flex-1" htmlFor="q">
               <span className="label">Find the patient</span>
               <span className="hint">Search by name, mobile number, email or ID number</span>
-              <input id="q" name="q" type="search" className="input" defaultValue={q} required />
+              <input id="q" name="q" type="search" className="input" defaultValue={q} autoComplete="off" {...NO_PASSWORD_MANAGER} required />
             </label>
             <button type="submit" className="btn btn-primary">Search</button>
           </form>

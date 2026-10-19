@@ -39,12 +39,12 @@ export function ConsentForm({ type, kiosk, caseId, initial = {} }: { type: CaseT
       <section className="card space-y-5" aria-labelledby="details-heading">
         <h2 id="details-heading" className="section-title">Your details</h2>
         <div className="grid gap-5 sm:grid-cols-2">
-          <TextField name="firstName" label="First name" required autoComplete="given-name" defaultValue={v.firstName} error={e.firstName} />
-          <TextField name="lastName" label="Surname" required autoComplete="family-name" defaultValue={v.lastName} error={e.lastName} />
+          <TextField name="firstName" label="First name" required defaultValue={v.firstName} error={e.firstName} />
+          <TextField name="lastName" label="Surname" required defaultValue={v.lastName} error={e.lastName} />
           <TextField name="dateOfBirth" label="Date of birth" type="date" required max={today} defaultValue={v.dateOfBirth} error={e.dateOfBirth} />
           <TextField name="idNumber" label={kiosk ? "ID or passport number" : "ID number"} required={kiosk} defaultValue={v.idNumber} error={e.idNumber} />
-          <TextField name="phone" label="Contact number" type="tel" inputMode="tel" required autoComplete="tel" defaultValue={v.phone} error={e.phone} />
-          <TextField name="email" label="Email address" type="email" inputMode="email" required autoComplete="email" defaultValue={v.email} error={e.email} hint="We'll email you a copy of this signed form" />
+          <TextField name="phone" label="Contact number" type="tel" inputMode="tel" required defaultValue={v.phone} error={e.phone} />
+          <TextField name="email" label="Email address" type="email" inputMode="email" required defaultValue={v.email} error={e.email} hint="We'll email you a copy of this signed form" />
         </div>
         {def.treatmentChoice && chooseTreatment && <TreatmentChoice choice={def.treatmentChoice} values={v} error={e.treatment} />}
       </section>
@@ -103,7 +103,7 @@ export function ConsentForm({ type, kiosk, caseId, initial = {} }: { type: CaseT
       <section className="card space-y-5" aria-labelledby="consent-heading">
         <h2 id="consent-heading" className="section-title">Consent</h2>
         {def.consentStatement && <p className="text-lg">{def.consentStatement("the undersigned")}</p>}
-        <TextField name="signedName" label="Type your full name" required autoComplete="name" defaultValue={v.signedName} error={e.signedName} />
+        <TextField name="signedName" label="Type your full name" required defaultValue={v.signedName} error={e.signedName} />
         <SignaturePad name="signature" label="Patient signature" error={e.signature} defaultValue={v.signature} />
         <div className="grid gap-5 sm:grid-cols-2">
           <TextField name="emergencyName" label="Emergency contact name" required defaultValue={v.emergencyName} error={e.emergencyName} />

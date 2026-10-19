@@ -55,7 +55,7 @@ export function SignConsentForm({ caseId, type, patientName, treatment }: { case
       <section className="card space-y-5" aria-labelledby="consent-heading">
         <h2 id="consent-heading" className="section-title">Consent</h2>
         {def.consentStatement && <p className="text-lg">{def.consentStatement(patientName)}</p>}
-        <TextField name="signedName" label="Type your full name" required autoComplete="name" defaultValue={v.signedName ?? patientName} error={e.signedName} />
+        <TextField name="signedName" label="Type your full name" required defaultValue={v.signedName ?? patientName} error={e.signedName} />
         <SignaturePad name="signature" label="Your signature" error={e.signature} defaultValue={v.signature} />
         {def.postCare && (
           <div className="alert alert-info">

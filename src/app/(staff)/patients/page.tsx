@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { searchPatients } from "@/lib/patients";
 import { ageFrom } from "@/lib/time";
+import { NO_PASSWORD_MANAGER } from "@/components/no-autofill";
 
 export const metadata = { title: "Patients" };
 
@@ -25,7 +26,7 @@ export default async function PatientsPage({ searchParams }: { searchParams: Pro
         <label className="field flex-1" htmlFor="q">
           <span className="label">Find a patient</span>
           <span className="hint">Search by name, mobile number, email or ID number</span>
-          <input id="q" name="q" type="search" className="input" defaultValue={q} />
+          <input id="q" name="q" type="search" className="input" defaultValue={q} autoComplete="off" {...NO_PASSWORD_MANAGER} />
         </label>
         <button type="submit" className="btn btn-primary">Search</button>
       </form>

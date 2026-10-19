@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { NO_PASSWORD_MANAGER } from "./no-autofill";
 
 // A dropdown you can type into to filter, for lists too long to scroll. Only a
 // value from `options` is submitted; typed text that matches none submits "".
@@ -67,6 +68,7 @@ export function SearchableSelect({
           role="combobox"
           className="input pr-12"
           autoComplete="off"
+          {...NO_PASSWORD_MANAGER}
           value={query}
           aria-expanded={open}
           aria-controls={listId}
