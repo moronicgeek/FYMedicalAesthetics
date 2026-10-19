@@ -6,6 +6,10 @@ import { browserSupportsWebAuthn, platformAuthenticatorIsAvailable, startAuthent
 import { addPasskeyAction, passkeyRegistrationOptionsAction, passkeySignInAction, passkeySignInOptionsAction } from "@/app/actions/passkeys";
 
 // Cancelling the fingerprint prompt, or a timeout, both arrive as NotAllowedError.
+// Browsers ignore autocomplete="off" on password fields, and password managers
+// follow their own markers. The shared tablet must never offer saved logins.
+const NO_PASSWORD_MANAGER = { "data-1p-ignore": true, "data-lpignore": "true", "data-bwignore": true, "data-form-type": "other" };
+
 function cancelled(e: unknown) {
   return e instanceof Error && (e.name === "NotAllowedError" || e.name === "AbortError");
 }
@@ -94,16 +98,16 @@ export function AddFingerprint() {
   }
 
   return (
-    <form onSubmit={add} className="space-y-5">
+    <form onSubmit={add} className="space-y-5" autoComplete="off">
       {error && <div className="alert alert-error" role="alert">{error}</div>}
       {done && <div className="alert alert-success" role="status">Done. Next time, tap &quot;Sign in with fingerprint&quot; on this device.</div>}
       <label className="field" htmlFor="deviceName">
         <span className="label">Name for this device</span>
-        <input id="deviceName" name="deviceName" className="input" maxLength={60} placeholder="For example: Reception tablet" autoComplete="off" />
+        <input id="deviceName" name="deviceName" className="input" maxLength={60} placeholder="For example: Reception tablet" autoComplete="off" {...NO_PASSWORD_MANAGER} />
       </label>
       <label className="field" htmlFor="passkey-password">
         <span className="label">Your password, to confirm it&apos;s you</span>
-        <input id="passkey-password" name="password" type="password" className="input" autoComplete="off" required />
+        <input id="passkey-password" name="password" type="password" className="input" autoComplete="new-password" {...NO_PASSWORD_MANAGER} required />
       </label>
       <button type="submit" className="btn btn-primary" disabled={pending} aria-disabled={pending}>
         {pending ? "Waiting for your fingerprint…" : "Set up fingerprint sign-in"}
