@@ -4,6 +4,10 @@ A web app for Lumiere Clinic to take patient consent on a tablet, run IV
 drip treatments through a doctor's approval, book appointments with
 doctors, and remind patients and doctors before each appointment.
 
+For clinic staff, [docs/staff-guide.html](docs/staff-guide.html) is a
+walkthrough per role with an animated visit. Open it in a browser. Update it
+when the visit flow or a role changes.
+
 ## The IV drip visit
 
 This is the clinic's process for an IV drip (process flow V4), step by step.
