@@ -1,4 +1,5 @@
 import type { ConsentFormDef } from "@/lib/consent-forms";
+import { NO_PASSWORD_MANAGER } from "./no-autofill";
 
 // The treatment tick boxes and "Other" box from a consent form. Field names
 // match what parseTreatment reads on the server.
@@ -24,6 +25,8 @@ export function TreatmentChoice({ choice, values, error }: { choice: NonNullable
           aria-label={choice.options.length ? "Other treatment" : choice.label}
           placeholder={choice.options.length ? "Other (please describe)" : ""}
           defaultValue={values.treatmentOther}
+          autoComplete="off"
+          {...NO_PASSWORD_MANAGER}
         />
       )}
     </div>

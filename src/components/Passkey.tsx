@@ -4,12 +4,9 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { browserSupportsWebAuthn, platformAuthenticatorIsAvailable, startAuthentication, startRegistration } from "@simplewebauthn/browser";
 import { addPasskeyAction, passkeyRegistrationOptionsAction, passkeySignInAction, passkeySignInOptionsAction } from "@/app/actions/passkeys";
+import { NO_PASSWORD_MANAGER } from "./no-autofill";
 
 // Cancelling the fingerprint prompt, or a timeout, both arrive as NotAllowedError.
-// Browsers ignore autocomplete="off" on password fields, and password managers
-// follow their own markers. The shared tablet must never offer saved logins.
-const NO_PASSWORD_MANAGER = { "data-1p-ignore": true, "data-lpignore": "true", "data-bwignore": true, "data-form-type": "other" };
-
 function cancelled(e: unknown) {
   return e instanceof Error && (e.name === "NotAllowedError" || e.name === "AbortError");
 }

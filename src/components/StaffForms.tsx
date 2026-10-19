@@ -5,6 +5,7 @@ import { addStaffAction, resetPasswordAction, type ResetState, type StaffFormSta
 import { FormErrors, SelectField, TextField } from "./fields";
 import { SubmitButton } from "./SubmitButton";
 import { useJumpToError } from "./useJumpToError";
+import { NO_PASSWORD_MANAGER } from "./no-autofill";
 
 export function AddStaffForm() {
   const [state, action] = useActionState<StaffFormState, FormData>(addStaffAction, {});
@@ -12,7 +13,7 @@ export function AddStaffForm() {
   const v = state.values ?? {};
   const e = state.errors ?? {};
   return (
-    <form ref={formRef} action={action} className="space-y-5" noValidate key={state.created}>
+    <form ref={formRef} action={action} className="space-y-5" noValidate autoComplete="off" key={state.created}>
       {state.created && <div className="alert alert-success" role="status">{state.created} has been added.</div>}
       <FormErrors errors={state.errors} />
       <div className="grid gap-5 sm:grid-cols-2">
@@ -43,11 +44,11 @@ export function ResetPasswordForm({ id, name }: { id: string; name: string }) {
   const [state, action] = useActionState<ResetState, FormData>(resetPasswordAction, {});
   const formRef = useJumpToError(state);
   return (
-    <form ref={formRef} action={action} className="flex flex-col gap-2 sm:flex-row sm:items-end">
+    <form ref={formRef} action={action} className="flex flex-col gap-2 sm:flex-row sm:items-end" autoComplete="off">
       <input type="hidden" name="id" value={id} />
       <label className="field" htmlFor={`pw-${id}`}>
         <span className="hint">New password for {name}</span>
-        <input id={`pw-${id}`} name="password" type="password" className="input" minLength={12} required />
+        <input id={`pw-${id}`} name="password" type="password" className="input" minLength={12} autoComplete="new-password" {...NO_PASSWORD_MANAGER} required />
       </label>
       <SubmitButton className="btn btn-secondary" pendingText="Saving…">Reset password</SubmitButton>
       {state.message && <span role="status" className="text-success font-bold">{state.message}</span>}

@@ -22,10 +22,10 @@ export function PatientForm({ patientId, initial, submitLabel, kiosk = false }: 
       <section className="card space-y-5" aria-labelledby="about-heading">
         <h2 id="about-heading" className="section-title">1. About you</h2>
         <div className="grid gap-5 sm:grid-cols-2">
-          <TextField name="firstName" label="First name" required autoComplete="given-name" defaultValue={v.firstName} error={e.firstName} />
-          <TextField name="lastName" label="Surname" required autoComplete="family-name" defaultValue={v.lastName} error={e.lastName} />
+          <TextField name="firstName" label="First name" required defaultValue={v.firstName} error={e.firstName} />
+          <TextField name="lastName" label="Surname" required defaultValue={v.lastName} error={e.lastName} />
           <TextField name="preferredName" label="Preferred name" hint="What you like to be called" defaultValue={v.preferredName} error={e.preferredName} />
-          <TextField name="dateOfBirth" label="Date of birth" type="date" required max={today} autoComplete="bday" defaultValue={v.dateOfBirth} error={e.dateOfBirth} />
+          <TextField name="dateOfBirth" label="Date of birth" type="date" required max={today} defaultValue={v.dateOfBirth} error={e.dateOfBirth} />
           <TextField name="gender" label="Gender" defaultValue={v.gender} error={e.gender} />
           <TextField name="idNumber" label="ID or passport number" hint="Helps us find your record quickly next time" defaultValue={v.idNumber} error={e.idNumber} />
         </div>
@@ -34,8 +34,8 @@ export function PatientForm({ patientId, initial, submitLabel, kiosk = false }: 
       <section className="card space-y-5" aria-labelledby="contact-heading">
         <h2 id="contact-heading" className="section-title">2. How we contact you</h2>
         <div className="grid gap-5 sm:grid-cols-2">
-          <TextField name="phone" label="Mobile number" type="tel" inputMode="tel" required autoComplete="tel" defaultValue={v.phone} error={e.phone} hint="Include the country code, e.g. +27 82 123 4567" />
-          <TextField name="email" label="Email address" type="email" inputMode="email" autoComplete="email" defaultValue={v.email} error={e.email} />
+          <TextField name="phone" label="Mobile number" type="tel" inputMode="tel" required defaultValue={v.phone} error={e.phone} hint="Include the country code, e.g. +27 82 123 4567" />
+          <TextField name="email" label="Email address" type="email" inputMode="email" defaultValue={v.email} error={e.email} />
         </div>
         <TextArea name="address" label="Home address" defaultValue={v.address} error={e.address} />
         <RadioGroup
@@ -86,7 +86,7 @@ export function PatientForm({ patientId, initial, submitLabel, kiosk = false }: 
         />
         <Checkbox name="consentAccuracy" required defaultChecked={v.consentAccuracy === "on"} error={e.consentAccuracy} label="The information I have given is true and complete to the best of my knowledge." />
         <Checkbox name="consentMarketing" defaultChecked={v.consentMarketing === "on"} label="I would like to hear about offers and new treatments (optional)." />
-        <TextField name="signedName" label="Type your full name to sign" required autoComplete="name" defaultValue={v.signedName} error={e.signedName} />
+        <TextField name="signedName" label="Type your full name to sign" required defaultValue={v.signedName} error={e.signedName} />
       </section>
 
       <div className="flex flex-wrap gap-4">
