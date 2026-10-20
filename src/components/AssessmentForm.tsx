@@ -6,6 +6,7 @@ import { CONSENT_FORMS, type CaseType } from "@/lib/consent-forms";
 import type { VitalRanges } from "@/lib/vitals";
 import { VitalInputs } from "./CaseForms";
 import { FormErrors, SelectField, TextArea, TextField } from "./fields";
+import { IdOwnerConfirm } from "./IdOwnerConfirm";
 import { IdPhotoField } from "./IdPhotoField";
 import { SearchableSelect } from "./SearchableSelect";
 import { SubmitButton } from "./SubmitButton";
@@ -50,6 +51,7 @@ export function AssessmentForm({
         <h2 id="details-heading" className="section-title">1. Patient details</h2>
         <div className="grid gap-5 sm:grid-cols-2">
           <TextField name="idNumber" label="ID or passport number" required defaultValue={v.idNumber} error={e.idNumber} />
+          <IdOwnerConfirm owner={state.idOwner} />
           <TextField name="dateOfBirth" label="Date of birth" type="date" required max={today} defaultValue={v.dateOfBirth} error={e.dateOfBirth} hint={initial.dateOfBirth && !state.values ? "Taken from the ID number. Please check it." : undefined} />
           <TextField name="firstName" label="First name" required defaultValue={v.firstName} error={e.firstName} />
           <TextField name="lastName" label="Surname" required defaultValue={v.lastName} error={e.lastName} />

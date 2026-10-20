@@ -1,11 +1,11 @@
 import "server-only";
 import { randomInt } from "node:crypto";
-import type { CaseOutcome, CaseStatus, Prisma, TreatmentCase, User } from "@prisma/client";
+import type { CaseOutcome, CaseStatus, Patient, Prisma, TreatmentCase, User } from "@prisma/client";
 import { db } from "./db";
 import { decryptJson, encryptJson, decrypt, encrypt, normalisePhone, randomToken, sha256 } from "./crypto";
 import { CONSENT_FORMS, type CaseType } from "./consent-forms";
-import { createPatient, findSamePatient, patientRecord, updatePatient } from "./patients";
-import { mergePatientRecord, samePerson } from "./patient-match";
+import { createPatient, findSamePatient, idNumberOwner, patientRecord, updatePatient } from "./patients";
+import { keepIdentity, mergePatientRecord, samePerson } from "./patient-match";
 import type { SessionUser } from "./auth";
 import { appUrl, clinicName, sendEmail, sendWhatsApp, type WhatsAppMessage } from "./notify";
 import { clinicInbox, getVitalRanges } from "./settings";
@@ -56,7 +56,7 @@ export function consentColumns(record: CaseRecord) {
   return { consent: encryptJson(record), treatment: encrypt(record.treatment ?? ""), summary: encryptJson(summaryOf(record)) };
 }
 
-const LIST_COLUMNS = { id: true, code: true, type: true, status: true, outcome: true, patientId: true, createdAt: true, summary: true } as const;
+const LIST_COLUMNS = { id: true, code: true, type: true, status: true, outcome: true, patientId: true, nameMismatch: true, createdAt: true, summary: true } as const;
 
 export type CaseListItem = Omit<Prisma.TreatmentCaseGetPayload<{ select: typeof LIST_COLUMNS }>, "summary"> & { consent: CaseSummary };
 
@@ -86,34 +86,45 @@ async function uniqueCode() {
   return String(randomInt(10000, 100000));
 }
 
+export type SavedPatient = { patientId: string; nameMismatch: boolean } | { idOwner: Pick<Patient, "id" | "data"> };
+
 // Creates or updates the patient's record from what was captured for this
-// visit. A returning patient is matched by findSamePatient. With `verify`,
+// visit. The record holding the ID number entered comes first (see
+// checkIdOwner): on staff forms a mismatched name needs confirming
+// (`idOwner` is returned), and the client's own tablet form is linked to it
+// with `nameMismatch` and leaves the record alone until staff check it.
+// Otherwise a returning patient is matched by findSamePatient. With `client`,
 // the record the case is linked to is only updated if the details are still
-// the same person: a client filling in their own form on the tablet could have
-// been checked in under someone else's ID number.
-async function savePatientFromRecord(record: CaseRecord, knownPatientId: string | null, opts: { recordedBy?: string; verify?: boolean } = {}) {
+// the same person: the client could have been checked in under someone
+// else's ID number.
+async function savePatientFromRecord(
+  record: CaseRecord,
+  knownPatientId: string | null,
+  opts: { recordedBy?: string; client?: boolean; confirmedPatientId?: string } = {},
+): Promise<SavedPatient> {
   const p = record.patient;
-  const linked = knownPatientId ? await db.patient.findUnique({ where: { id: knownPatientId } }) : null;
-  const existing = linked && (!opts.verify || samePerson(patientRecord(linked), p)) ? linked : await findSamePatient(p);
+  const { owner, check } = await idNumberOwner(p, opts);
+  if (check === "ask") return { idOwner: owner! };
+  if (check === "flag") return { patientId: owner!.id, nameMismatch: true };
+  const linked = !owner && knownPatientId ? await db.patient.findUnique({ where: { id: knownPatientId } }) : null;
+  const existing = owner ?? (linked && (!opts.client || samePerson(patientRecord(linked), p)) ? linked : await findSamePatient(p));
   if (existing) {
     // This visit's details replace the stored ones; anything left blank keeps
     // what is on file.
     const prev = patientRecord(existing);
-    await updatePatient(
-      existing.id,
-      mergePatientRecord(prev, {
-        ...prev,
-        firstName: p.firstName,
-        lastName: p.lastName,
-        dateOfBirth: p.dateOfBirth,
-        phone: p.phone,
-        email: p.email,
-        idNumber: p.idNumber,
-        emergencyContact: record.emergency,
-        medical: { ...prev.medical, medications: record.details.medications },
-      }),
-    );
-    return existing.id;
+    const next = {
+      ...prev,
+      firstName: p.firstName,
+      lastName: p.lastName,
+      dateOfBirth: p.dateOfBirth,
+      phone: p.phone,
+      email: p.email,
+      idNumber: p.idNumber,
+      emergencyContact: record.emergency,
+      medical: { ...prev.medical, medications: record.details.medications },
+    };
+    await updatePatient(existing.id, mergePatientRecord(prev, check === "confirmed" ? keepIdentity(prev, next) : next));
+    return { patientId: existing.id, nameMismatch: false };
   }
   const created = await createPatient({
     firstName: p.firstName,
@@ -139,14 +150,20 @@ async function savePatientFromRecord(record: CaseRecord, knownPatientId: string 
       signedAt: record.signedAt ?? new Date().toISOString(),
     },
   });
-  return created.id;
+  return { patientId: created.id, nameMismatch: false };
+}
+
+// Only ever called for the client's own form, so never asks for a confirmation.
+function linkedPatient(saved: SavedPatient) {
+  if ("idOwner" in saved) throw new Error("A client form needed staff to confirm the ID number");
+  return saved;
 }
 
 // Self-service kiosk route: the patient fills in and signs the whole form.
 export async function createCaseFromConsent(consent: ConsentRecord) {
-  const patientId = await savePatientFromRecord(consent, null);
+  const { patientId, nameMismatch } = linkedPatient(await savePatientFromRecord(consent, null, { client: true }));
   return db.treatmentCase.create({
-    data: { code: await uniqueCode(), type: consent.formType, status: "CONSENTED", patientId, ...consentColumns(consent) },
+    data: { code: await uniqueCode(), type: consent.formType, status: "CONSENTED", patientId, nameMismatch, ...consentColumns(consent) },
   });
 }
 
@@ -156,10 +173,10 @@ export async function createCaseFromConsent(consent: ConsentRecord) {
 export async function completeClientForm(caseId: string, consent: ConsentRecord) {
   const row = await db.treatmentCase.findUnique({ where: { id: caseId } });
   if (!row || row.status !== "QUEUED" || row.type === "IV_DRIP") return false;
-  const patientId = await savePatientFromRecord(consent, row.patientId, { verify: true });
+  const { patientId, nameMismatch } = linkedPatient(await savePatientFromRecord(consent, row.patientId, { client: true }));
   const updated = await db.treatmentCase.updateMany({
     where: { id: caseId, status: "QUEUED" },
-    data: { patientId, ...consentColumns(consent), status: "CONSENTED" },
+    data: { patientId, nameMismatch, ...consentColumns(consent), status: "CONSENTED" },
   });
   return updated.count === 1;
 }
@@ -180,8 +197,11 @@ export type CheckIn = {
 // and treatment at the desk; the visit then
 // waits for a practitioner. A returning patient is linked straight away so
 // their details can be filled in for the practitioner.
-export async function checkInCase(input: CheckIn, startedBy?: Pick<User, "id">) {
-  const existing = await findSamePatient({ ...input, dateOfBirth: "", email: "" });
+// `idOwner` is the record already holding the ID number entered, once checked
+// with idNumberOwner; `nameMismatch` flags a tablet check-in whose name didn't
+// match it.
+export async function checkInCase(input: CheckIn, startedBy?: Pick<User, "id">, link: { idOwner?: Pick<Patient, "id"> | null; nameMismatch?: boolean } = {}) {
+  const existing = link.idOwner ?? (await findSamePatient({ ...input, dateOfBirth: "", email: "" }));
   const record: CaseRecord = {
     formType: input.type,
     formVersion: CONSENT_FORMS[input.type].version,
@@ -198,6 +218,7 @@ export async function checkInCase(input: CheckIn, startedBy?: Pick<User, "id">) 
       status: startedBy ? "ASSESSMENT" : "QUEUED",
       practitionerId: startedBy?.id,
       patientId: existing?.id ?? null,
+      nameMismatch: link.nameMismatch ?? false,
       ...consentColumns(record),
     },
   });
@@ -218,9 +239,23 @@ export async function cancelCase(caseId: string) {
 
 // The practitioner's details and medical history. For an IV drip the vitals
 // are recorded next (recordPreVitals); other treatments go straight to signing.
-export async function saveAssessment(caseId: string, record: CaseRecord, idPhoto: string | undefined, practitioner: Pick<SessionUser, "id" | "name">) {
+// Returns the record holding the ID number when the name entered doesn't
+// match it and nobody has confirmed it's the same client yet. A case already
+// linked to that record without a flag counts as confirmed.
+export async function saveAssessment(
+  caseId: string,
+  record: CaseRecord,
+  idPhoto: string | undefined,
+  practitioner: Pick<SessionUser, "id" | "name">,
+  confirmedPatientId?: string,
+): Promise<{ idOwner?: Pick<Patient, "id" | "data"> }> {
   const row = await db.treatmentCase.findUniqueOrThrow({ where: { id: caseId } });
-  const patientId = await savePatientFromRecord(record, row.patientId, { recordedBy: practitioner.name });
+  const saved = await savePatientFromRecord(record, row.patientId, {
+    recordedBy: practitioner.name,
+    confirmedPatientId: confirmedPatientId || (row.patientId && !row.nameMismatch ? row.patientId : undefined),
+  });
+  if ("idOwner" in saved) return saved;
+  const { patientId } = saved;
   if (idPhoto) await db.patient.update({ where: { id: patientId }, data: { idPhoto: encrypt(idPhoto) } });
   // Only while the case is still at this step, so a second submit of the same
   // form changes nothing.
@@ -228,11 +263,41 @@ export async function saveAssessment(caseId: string, record: CaseRecord, idPhoto
     where: { id: caseId, status: "ASSESSMENT" },
     data: {
       patientId,
+      nameMismatch: false,
       practitionerId: row.practitionerId ?? practitioner.id,
       ...consentColumns(record),
       ...(row.type === "IV_DRIP" ? {} : { status: "AWAITING_SIGNATURE" }),
     },
   });
+  return {};
+}
+
+// Staff checked a case flagged because the name given didn't match the record
+// holding the ID number. Same client: the case stays linked and, once the
+// client has filled in their form, their answers update the record (name kept
+// as on file). Wrong ID number: the case gets the corrected one and is linked
+// again from that. Returns the record holding the corrected ID number when it
+// is on file for someone else too.
+export async function resolveNameMismatch(caseId: string, correctedIdNumber?: string): Promise<{ idOwner?: Pick<Patient, "id" | "data"> }> {
+  const row = await db.treatmentCase.findUniqueOrThrow({ where: { id: caseId } });
+  if (!row.nameMismatch) return {};
+  const record = decryptJson<CaseRecord>(row.consent);
+  if (correctedIdNumber) record.patient.idNumber = correctedIdNumber;
+  // Before the client's form is in there are no details to save yet, only
+  // which record the visit belongs to.
+  const hasDetails = isSigned(record) || Boolean(record.patient.dateOfBirth);
+  let patientId: string | null;
+  if (hasDetails) {
+    const saved = await savePatientFromRecord(record, correctedIdNumber ? null : row.patientId, { confirmedPatientId: correctedIdNumber ? undefined : row.patientId ?? undefined });
+    if ("idOwner" in saved) return saved;
+    patientId = saved.patientId;
+  } else {
+    const { owner, check } = await idNumberOwner(record.patient, { confirmedPatientId: correctedIdNumber ? undefined : row.patientId ?? undefined });
+    if (check === "ask") return { idOwner: owner! };
+    patientId = owner?.id ?? (await findSamePatient(record.patient))?.id ?? null;
+  }
+  await db.treatmentCase.update({ where: { id: caseId }, data: { patientId, nameMismatch: false, ...(correctedIdNumber ? consentColumns(record) : {}) } });
+  return {};
 }
 
 // Where to load the patient's ID photo from, if one is on file. The version

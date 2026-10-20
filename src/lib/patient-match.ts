@@ -29,6 +29,31 @@ export function samePerson(a: Identity, b: Identity) {
   return normaliseName(a.lastName) === normaliseName(b.lastName);
 }
 
+// What to do when the ID number entered is already on someone's record. ID
+// numbers are unique, so that record is the only one the visit can belong to.
+// If the details don't look like the same person (often a typo in the name),
+// staff confirm it is before the record is used ("ask"). The client's own
+// form on the tablet is linked anyway and flagged for staff ("flag"), so the
+// client is never shown whose ID number it is.
+export type IdOwnerCheck = "none" | "same" | "confirmed" | "flag" | "ask";
+
+export function checkIdOwner(
+  owner: (Identity & { id: string }) | null,
+  entered: Identity,
+  opts: { client?: boolean; confirmedPatientId?: string } = {},
+): IdOwnerCheck {
+  if (!owner) return "none";
+  if (samePerson(owner, entered)) return "same";
+  if (opts.client) return "flag";
+  return opts.confirmedPatientId === owner.id ? "confirmed" : "ask";
+}
+
+// Staff confirmed a mismatched name belongs to the record on file: the name
+// and date of birth stay as they are, since the typed ones may be the typo.
+export function keepIdentity<T extends Identity>(prev: Identity, next: T): T {
+  return { ...next, firstName: prev.firstName, lastName: prev.lastName, dateOfBirth: prev.dateOfBirth || next.dateOfBirth };
+}
+
 function fill<T extends string | undefined>(next: T, prev: T): T {
   return next?.trim() ? next : prev;
 }

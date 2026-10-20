@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { closeCaseAction, postVitalsAction, preVitalsAction, type StepState } from "@/app/actions/cases";
+import { closeCaseAction, postVitalsAction, preVitalsAction, resolveNameMismatchAction, type StepState } from "@/app/actions/cases";
 import type { ConsentFormDef } from "@/lib/consent-forms";
 import { VITAL_FIELDS, type VitalRanges } from "@/lib/vitals";
 import { FormErrors, SelectField, TextField } from "./fields";
@@ -127,6 +127,27 @@ export function CloseCaseForm({
       </label>
       <SignaturePad name="signature" label={`${signer} signature`} error={e.signature} defaultValue={v.signature} />
       <SubmitButton className="btn btn-primary btn-lg" pendingText="Closing…">Sign and close case</SubmitButton>
+    </form>
+  );
+}
+
+// The client gave an ID number on file under a different name: staff confirm
+// it's the same client, or enter the right ID number.
+export function NameMismatchForm({ caseId, canConfirm }: { caseId: string; canConfirm: boolean }) {
+  const [state, action] = useActionState<StepState, FormData>(resolveNameMismatchAction, {});
+  const formRef = useJumpToError(state);
+  const e = state.errors ?? {};
+  return (
+    <form ref={formRef} action={action} className="space-y-4" noValidate>
+      <input type="hidden" name="caseId" value={caseId} />
+      <FormErrors errors={state.errors} />
+      {canConfirm && (
+        <SubmitButton name="intent" value="same" className="btn btn-primary" pendingText="Saving…">Yes, same client</SubmitButton>
+      )}
+      <div className="grid gap-3 sm:grid-cols-2 sm:items-end">
+        <TextField name="idNumber" label={canConfirm ? "Not the same client? Enter the right ID or passport number" : "The right ID or passport number"} defaultValue={state.values?.idNumber} error={e.idNumber} />
+        <div><SubmitButton name="intent" value="correct" className="btn btn-secondary" pendingText="Saving…">Save the right ID number</SubmitButton></div>
+      </div>
     </form>
   );
 }

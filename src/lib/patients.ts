@@ -1,8 +1,8 @@
 import "server-only";
-import type { Patient, Role } from "@prisma/client";
+import { Prisma, type Patient, type Role } from "@prisma/client";
 import { db } from "./db";
 import { blindIndex, decrypt, decryptJson, encryptJson, normaliseEmail, normaliseIdNumber, normalisePhone } from "./crypto";
-import { samePerson, type Identity } from "./patient-match";
+import { checkIdOwner, samePerson, type Identity } from "./patient-match";
 import { canSeeService } from "./access";
 import type { PatientInput } from "./validation";
 
@@ -67,7 +67,7 @@ export function toRecord(input: PatientInput, signedAt = new Date()): PatientRec
   };
 }
 
-export function lookupHashes(record: Pick<PatientRecord, "email" | "phone" | "idNumber">) {
+export function lookupHashes(record: Partial<Pick<PatientRecord, "email" | "phone" | "idNumber">>) {
   return {
     emailHash: record.email ? blindIndex(normaliseEmail(record.email)) : null,
     phoneHash: record.phone ? blindIndex(normalisePhone(record.phone)) : null,
@@ -89,14 +89,67 @@ export function displayName(p: Pick<PatientRecord, "firstName" | "lastName" | "p
   return p.preferredName ? `${p.preferredName} ${p.lastName}` : `${p.firstName} ${p.lastName}`;
 }
 
+// Two records can't hold the same ID number (a unique index). The app checks
+// first, so this only happens when two forms with the same new ID number are
+// saved at the same moment.
+export class IdNumberTaken extends Error {
+  constructor() {
+    super("This ID number is already on file for another client.");
+  }
+}
+
+function idNumberClash(e: unknown) {
+  return e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002" && JSON.stringify(e.meta?.target ?? "").includes("idNumberHash");
+}
+
 export async function createPatient(record: PatientRecord) {
-  return db.patient.create({
-    data: { data: encryptJson(record), consentAt: new Date(record.consent.signedAt), ...lookupHashes(record) },
-  });
+  try {
+    return await db.patient.create({
+      data: { data: encryptJson(record), consentAt: new Date(record.consent.signedAt), ...lookupHashes(record) },
+    });
+  } catch (e) {
+    throw idNumberClash(e) ? new IdNumberTaken() : e;
+  }
 }
 
 export async function updatePatient(id: string, record: PatientRecord) {
-  return db.patient.update({ where: { id }, data: { data: encryptJson(record), ...lookupHashes(record) } });
+  try {
+    return await db.patient.update({ where: { id }, data: { data: encryptJson(record), ...lookupHashes(record) } });
+  } catch (e) {
+    throw idNumberClash(e) ? new IdNumberTaken() : e;
+  }
+}
+
+// The one record holding this ID number, if any.
+export async function findByIdNumber(idNumber?: string) {
+  const { idNumberHash } = lookupHashes({ idNumber });
+  return idNumberHash ? db.patient.findUnique({ where: { idNumberHash } }) : null;
+}
+
+// Looks up who holds the ID number entered and what that means for this form
+// (see checkIdOwner).
+export async function idNumberOwner(entered: Identity, opts: { client?: boolean; confirmedPatientId?: string } = {}) {
+  const owner = await findByIdNumber(entered.idNumber);
+  const check = checkIdOwner(owner && { ...patientRecord(owner), id: owner.id }, entered, opts);
+  return { owner, check };
+}
+
+export type IdOwner = { id: string; name: string };
+
+// The message staff see when the ID number entered is on another client's
+// record. The name is only shown to staff allowed to see that client.
+export async function idOwnerPrompt(role: Role, owner: Pick<Patient, "id" | "data">, opts: { confirmable?: boolean } = {}): Promise<{ error: string; idOwner?: IdOwner }> {
+  if (!(await canSeePatient(role, owner.id))) {
+    return { error: "This ID number is already on file for another client. Please check it, or ask reception or a doctor." };
+  }
+  const p = patientRecord(owner);
+  const name = `${p.firstName} ${p.lastName}`;
+  const onFile = `This ID number is already on file for ${name}${p.dateOfBirth ? `, born ${p.dateOfBirth}` : ""}.`;
+  if (opts.confirmable === false) return { error: `${onFile} Please check it with the client.` };
+  return {
+    error: `${onFile} If this is the same client, tick the box below and save again. If not, please check the ID number.`,
+    idOwner: { id: owner.id, name },
+  };
 }
 
 export async function getPatient(id: string) {

@@ -143,7 +143,9 @@ model Patient {
   data         String
   emailHash    String?
   phoneHash    String?
-  idNumberHash String?
+  // One record per ID number: a returning client whose name is typed
+  // differently is matched to theirs, never given a second one.
+  idNumberHash String?         @unique
   // Encrypted JPEG data URL of the patient's ID document, if photographed.
   idPhoto      String?
   consentAt    DateTime
@@ -154,7 +156,6 @@ model Patient {
 
   @@index([emailHash])
   @@index([phoneHash])
-  @@index([idNumberHash])
 }
 
 model Appointment {
@@ -217,6 +218,10 @@ model TreatmentCase {
   // they don't fetch and decrypt whole signed forms every few seconds. Null on
   // older rows until a list fills it in.
   summary               String?
+  // The client gave an ID number on file under a different name on the
+  // tablet. The case is linked to that record, which isn't changed until
+  // staff check it's the same client or correct the ID number.
+  nameMismatch          Boolean      @default(false)
   consentEmailedAt      DateTime?
   practitionerId        String?
   practitioner          User?        @relation("CasePractitioner", fields: [practitionerId], references: [id])

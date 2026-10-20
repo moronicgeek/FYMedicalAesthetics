@@ -89,11 +89,11 @@ export function RadioGroup({ name, label, hint, error, required, defaultValue, o
   );
 }
 
-export function Checkbox({ name, label, error, defaultChecked, required }: { name: string; label: ReactNode; error?: string; defaultChecked?: boolean; required?: boolean }) {
+export function Checkbox({ name, label, error, defaultChecked, required, value }: { name: string; label: ReactNode; error?: string; defaultChecked?: boolean; required?: boolean; value?: string }) {
   return (
     <div className="field">
       <label className="choice">
-        <input type="checkbox" name={name} defaultChecked={defaultChecked} required={required} aria-invalid={error ? true : undefined} aria-describedby={error ? `${name}-error` : undefined} />
+        <input type="checkbox" name={name} value={value} defaultChecked={defaultChecked} required={required} aria-invalid={error ? true : undefined} aria-describedby={error ? `${name}-error` : undefined} />
         <span>{label}</span>
       </label>
       {error && <span id={`${name}-error`} className="error-text">{error}</span>}
