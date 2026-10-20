@@ -7,6 +7,7 @@ import { FormErrors, RadioGroup, TextField } from "./fields";
 import type { CaseType } from "@/lib/consent-forms";
 import type { IvDrip } from "@/lib/settings";
 import { DripCards } from "./DripCards";
+import { IdOwnerConfirm } from "./IdOwnerConfirm";
 import { SubmitButton } from "./SubmitButton";
 import { useJumpToError } from "./useJumpToError";
 
@@ -42,6 +43,7 @@ export function CheckInForm({ canStartIv = false, ivOnly = false, kiosk = false,
       </div>
       <div className="grid gap-5 sm:grid-cols-2">
         <TextField name="idNumber" label="ID or passport number" required defaultValue={v.idNumber} error={e.idNumber} hint={kiosk ? undefined : "A returning client's details are filled in from this"} />
+        <IdOwnerConfirm owner={state.idOwner} />
         <TextField name="phone" label="Contact number" type="tel" inputMode="tel" required defaultValue={v.phone} error={e.phone} />
         <TextField name="emergencyName" label="Emergency contact name" required defaultValue={v.emergencyName} error={e.emergencyName} />
         <TextField name="emergencyPhone" label="Emergency contact number" type="tel" inputMode="tel" required defaultValue={v.emergencyPhone} error={e.emergencyPhone} />

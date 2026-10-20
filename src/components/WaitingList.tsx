@@ -8,9 +8,12 @@ import { formatTime } from "@/lib/time";
 
 function Name({ c }: { c: CaseListItem }) {
   return (
-    <Link href={`/cases/${c.id}`} className="text-lg font-bold underline underline-offset-4">
-      {c.consent.patient.firstName} {c.consent.patient.lastName}
-    </Link>
+    <>
+      <Link href={`/cases/${c.id}`} className="text-lg font-bold underline underline-offset-4">
+        {c.consent.patient.firstName} {c.consent.patient.lastName}
+      </Link>
+      {c.nameMismatch && <strong className="ml-2 text-danger">Check the ID number</strong>}
+    </>
   );
 }
 

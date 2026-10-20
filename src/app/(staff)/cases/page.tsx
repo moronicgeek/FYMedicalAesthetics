@@ -40,7 +40,7 @@ export default async function CasesPage({ searchParams }: { searchParams: Promis
               <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 py-4">
                 <div>
                   <Link href={`/cases/${c.id}`} className="text-lg font-bold text-brand-dark underline underline-offset-4">{c.consent.patient.firstName} {c.consent.patient.lastName}</Link>
-                  <p className="muted">{CONSENT_FORMS[c.type].shortName} · #{c.code} · checked in {formatTime(c.createdAt)}</p>
+                  <p className="muted">{CONSENT_FORMS[c.type].shortName} · #{c.code} · checked in {formatTime(c.createdAt)}{c.nameMismatch && <> · <strong className="text-danger">Check the ID number</strong></>}</p>
                 </div>
                 <span className={`badge ${urgent.has(c.status) ? "bg-danger-soft text-danger" : ["AWAITING_DOCTOR", "AWAITING_SIGNATURE"].includes(c.status) ? "badge-CHECKED_IN" : "badge-BOOKED"}`}>{caseStatusLabel(c)}</span>
               </li>

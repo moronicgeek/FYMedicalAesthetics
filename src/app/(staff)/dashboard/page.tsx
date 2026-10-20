@@ -71,7 +71,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                   <Link href={`/cases/${c.id}`} className="font-bold text-brand-dark underline underline-offset-4">
                     {c.consent.patient.firstName} {c.consent.patient.lastName}
                   </Link>
-                  <p className="muted">{CONSENT_FORMS[c.type].shortName} · #{c.code}</p>
+                  <p className="muted">{CONSENT_FORMS[c.type].shortName} · #{c.code}{c.nameMismatch && <> · <strong className="text-danger">Check the ID number</strong></>}</p>
                 </div>
                 <span className={`badge ${["REFERRED", "DECLINED"].includes(c.status) ? "bg-danger-soft text-danger" : ["AWAITING_DOCTOR", "AWAITING_SIGNATURE"].includes(c.status) ? "badge-CHECKED_IN" : "badge-BOOKED"}`}>
                   {caseStatusLabel(c)}

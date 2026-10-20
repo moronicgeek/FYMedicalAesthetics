@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { savePatientAction, type PatientFormState } from "@/app/actions/patients";
 import { Checkbox, FormErrors, RadioGroup, TextArea, TextField } from "./fields";
+import { IdOwnerConfirm } from "./IdOwnerConfirm";
 import { SubmitButton } from "./SubmitButton";
 import { useJumpToError } from "./useJumpToError";
 
@@ -28,6 +29,7 @@ export function PatientForm({ patientId, initial, submitLabel, kiosk = false }: 
           <TextField name="dateOfBirth" label="Date of birth" type="date" required max={today} defaultValue={v.dateOfBirth} error={e.dateOfBirth} />
           <TextField name="gender" label="Gender" defaultValue={v.gender} error={e.gender} />
           <TextField name="idNumber" label="ID or passport number" hint="Helps us find your record quickly next time" defaultValue={v.idNumber} error={e.idNumber} />
+          <IdOwnerConfirm owner={state.idOwner} />
         </div>
       </section>
 

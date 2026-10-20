@@ -6,7 +6,7 @@ import { canSeeCase, canTreat } from "@/lib/access";
 import { caseStatusLabel, getCase, idPhotoUrl, isSigned, OUTCOME_LABEL } from "@/lib/cases";
 import { CONSENT_FORMS, treatmentValues } from "@/lib/consent-forms";
 import { db } from "@/lib/db";
-import { decryptPatient } from "@/lib/patients";
+import { canSeePatient, decryptPatient } from "@/lib/patients";
 import { listDoctors } from "@/lib/queries";
 import { dateOfBirthFromSaId } from "@/lib/sa-id";
 import { getIvDripNames, getOnCallDoctorId, getVitalRanges } from "@/lib/settings";
@@ -15,7 +15,7 @@ import { checkVitals, formatVitals, VITAL_FIELDS, type Vitals } from "@/lib/vita
 import { cancelCaseAction, handToClientAction, handToPatientAction, manualDecisionAction, resendConsentAction, resendDoctorAction, startCaseAction } from "@/app/actions/cases";
 import { AssessmentForm } from "@/components/AssessmentForm";
 import { AutoRefresh } from "@/components/AutoRefresh";
-import { CloseCaseForm, PostVitalsForm, PreVitalsForm } from "@/components/CaseForms";
+import { CloseCaseForm, NameMismatchForm, PostVitalsForm, PreVitalsForm } from "@/components/CaseForms";
 import { NO_PASSWORD_MANAGER } from "@/components/no-autofill";
 
 export const metadata = { title: "Treatment case" };
@@ -117,6 +117,10 @@ export default async function CasePage({ params, searchParams }: { params: Promi
     };
   }
 
+  // The client gave an ID number on file under another name (see nameMismatch).
+  const onFile = c.nameMismatch && c.patientId && (await canSeePatient(user.role, c.patientId)) ? await db.patient.findUnique({ where: { id: c.patientId } }) : null;
+  const onFileDetails = onFile ? decryptPatient(onFile) : null;
+
   const preCheck = c.preVitals ? checkVitals(c.preVitals, ranges) : null;
 
   // The doctor reads the client's answers before treating, so on injection
@@ -189,6 +193,22 @@ export default async function CasePage({ params, searchParams }: { params: Promi
 
       <Stepper steps={steps} />
       <p className="text-lg font-bold" role="status">{s === "CLOSED" && c.outcome ? OUTCOME_LABEL[c.outcome] : caseStatusLabel(c)}</p>
+
+      {c.nameMismatch && s !== "CLOSED" && (
+        <section className="card space-y-4 border-2 border-danger" aria-labelledby="id-check-heading">
+          <h2 id="id-check-heading" className="section-title">Check the ID number</h2>
+          <p>The client gave an ID number that is already on file under a different name. Nothing on that record has been changed. Please check with the client.</p>
+          {onFileDetails ? (
+            <dl className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
+              <div><dt className="hint">On file for this ID number</dt><dd className="font-bold">{onFileDetails.firstName} {onFileDetails.lastName}{onFileDetails.dateOfBirth ? `, born ${onFileDetails.dateOfBirth}` : ""}</dd></div>
+              <div><dt className="hint">Given today</dt><dd className="font-bold">{p.firstName} {p.lastName}{p.dateOfBirth ? `, born ${p.dateOfBirth}` : ""}</dd></div>
+            </dl>
+          ) : (
+            <p className="muted">Ask reception or a doctor to check who this ID number belongs to.</p>
+          )}
+          <NameMismatchForm caseId={c.id} canConfirm={Boolean(onFileDetails)} />
+        </section>
+      )}
 
       {yesAnswers.length > 0 && (
         <div className="alert alert-error" role="note">

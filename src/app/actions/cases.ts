@@ -21,6 +21,7 @@ import {
   recordPostVitals,
   recordPreVitals,
   resendDoctorRequest,
+  resolveNameMismatch,
   saveAssessment,
   signConsent,
   startCase,
@@ -29,13 +30,24 @@ import {
   type OfficeUse,
 } from "@/lib/cases";
 import type { ConsentFormDef } from "@/lib/consent-forms";
+import { findByIdNumber, IdNumberTaken, idNumberOwner, idOwnerPrompt, type IdOwner } from "@/lib/patients";
 import { getIvDripNames } from "@/lib/settings";
 import { isTabletLocked, lockTablet } from "@/lib/tablet";
 import { validIdPhoto, validSignature } from "@/lib/signature";
 import { echo, emergencyName, emergencyPhone, fieldErrors, formToObject, isoDate, phone, required, type FieldErrors } from "@/lib/validation";
 import { parseVitals, type Vitals } from "@/lib/vitals";
 
-export type ConsentFormState = { errors?: FieldErrors; values?: Record<string, string> };
+// idOwner: the client whose record already holds the ID number entered, for
+// staff to confirm it's the same person.
+const TAKEN = Symbol("ID number taken");
+
+// Two forms saved the same new ID number at the same moment.
+function idNumberTaken(e: unknown): typeof TAKEN {
+  if (e instanceof IdNumberTaken) return TAKEN;
+  throw e;
+}
+
+export type ConsentFormState = { errors?: FieldErrors; values?: Record<string, string>; idOwner?: IdOwner };
 
 function parseHistory(def: ConsentFormDef, values: Record<string, string>, errors: FieldErrors) {
   const answers: CaseRecord["answers"] = {};
@@ -138,19 +150,22 @@ export async function submitConsentAction(_prev: ConsentFormState, form: FormDat
   // check-in. Otherwise a new case, from the tablet's start screen or staff.
   if (values.caseId) {
     await loadOpenCase(values.caseId, user);
-    if (!(await completeClientForm(values.caseId, consent))) return { errors: { form: "This form has already been completed." }, values: echo(values) };
+    const done = await completeClientForm(values.caseId, consent).catch(idNumberTaken);
+    if (done === TAKEN) return { errors: { idNumber: "We couldn't save your details. Please ask reception for help." }, values: echo(values) };
+    if (!done) return { errors: { form: "This form has already been completed." }, values: echo(values) };
     await audit(user, "consent-signed", "TreatmentCase", values.caseId);
     await emailConsent(values.caseId).catch(() => undefined);
     redirect(`/kiosk/case/${values.caseId}?signed=1`);
   }
-  const created = await createCaseFromConsent(consent);
+  const created = await createCaseFromConsent(consent).catch(idNumberTaken);
+  if (created === TAKEN) return { errors: { idNumber: "We couldn't save your details. Please ask reception for help." }, values: echo(values) };
   await audit(user, "consent-signed", "TreatmentCase", created.id);
   // Saved first; the email is best-effort and can be resent from the case.
   await emailConsent(created.id).catch(() => undefined);
   redirect(kiosk ? `/kiosk/case/${created.id}?signed=1` : `/cases/${created.id}`);
 }
 
-export type StepState = { errors?: FieldErrors; values?: Record<string, string>; message?: string };
+export type StepState = { errors?: FieldErrors; values?: Record<string, string>; message?: string; idOwner?: IdOwner };
 
 // Loads a case the signed-in user is allowed to see. Practitioners never see
 // injection or laser cases, so for them those don't exist.
@@ -295,14 +310,22 @@ export async function checkInAction(_prev: ConsentFormState, form: FormData): Pr
   if (drip && !(await getIvDripNames()).includes(drip)) return { errors: { drip: "Please choose a drip from the list." }, values: echo(values) };
   // The client checking themselves in on the tablet: IV drip clients join
   // the waiting list; injection and laser clients go on to their form.
+  // ID numbers are unique: a client whose ID is on file is checked in on that
+  // record. A different name is confirmed by staff, or flagged on the tablet.
+  const { owner, check } = await idNumberOwner({ ...parsed.data, dateOfBirth: "" }, { client: kiosk, confirmedPatientId: values.confirmIdOwner });
+  if (check === "ask") {
+    const prompt = await idOwnerPrompt(user.role, owner!);
+    return { errors: { idNumber: prompt.error }, values: echo(values), idOwner: prompt.idOwner };
+  }
+  const link = { idOwner: owner, nameMismatch: check === "flag" };
   if (kiosk) {
-    const created = await checkInCase({ type, ...parsed.data, drip });
+    const created = await checkInCase({ type, ...parsed.data, drip }, undefined, link);
     await audit(user, "checked-in-on-tablet", "TreatmentCase", created.id);
     redirect(iv ? `/kiosk/checked-in/${created.id}` : `/kiosk/form/${created.id}`);
   }
   const startNow = values.intent === "start";
   if (startNow && iv && !canTreat(user.role, type)) return { errors: { form: "Only a practitioner or doctor can start an IV drip. Add the client to the waiting list instead." }, values: echo(values) };
-  const created = await checkInCase({ type, ...parsed.data, drip }, startNow && iv ? user : undefined);
+  const created = await checkInCase({ type, ...parsed.data, drip }, startNow && iv ? user : undefined, link);
   await audit(user, startNow && iv ? "case-started" : "checked-in", "TreatmentCase", created.id);
   if (!startNow) redirect(`/cases?checkedin=1`);
   if (iv) redirect(`/cases/${created.id}`);
@@ -396,11 +419,35 @@ export async function assessmentAction(_prev: StepState, form: FormData): Promis
     details: Object.fromEntries(def.detailFields.map((d) => [d.id, values[d.id]?.trim() ?? ""])),
     emergency: { name: parsed.data.emergencyName, phone: parsed.data.emergencyPhone },
   };
-  await saveAssessment(c.id, record, idPhoto, user);
+  const saved = await saveAssessment(c.id, record, idPhoto, user, values.confirmIdOwner).catch(idNumberTaken);
+  if (saved === TAKEN) return { errors: { idNumber: new IdNumberTaken().message }, values: echo(values) };
+  if (saved.idOwner) {
+    const prompt = await idOwnerPrompt(user.role, saved.idOwner);
+    return { errors: { idNumber: prompt.error }, values: echo(values), idOwner: prompt.idOwner };
+  }
   await audit(user, "assessment-saved", "TreatmentCase", c.id);
 
   if (!iv) redirect(`/cases/${c.id}`);
   return sendVitals(user, c.id, vitalsResult.vitals!, doctor!);
+}
+
+// A case flagged because the name the client gave on the tablet didn't match
+// the record holding their ID number. Staff confirm it's the same client, or
+// enter the right ID number.
+export async function resolveNameMismatchAction(_prev: StepState, form: FormData): Promise<StepState> {
+  const user = await requireUser();
+  const values = formToObject(form);
+  const c = await loadOpenCase(values.caseId, user);
+  const corrected = values.intent === "correct" ? values.idNumber?.trim() ?? "" : undefined;
+  if (corrected !== undefined && corrected.length < 5) return { errors: { idNumber: "Please enter the client's ID or passport number." }, values: echo(values) };
+  if (corrected !== undefined && c.patientId && (await findByIdNumber(corrected))?.id === c.patientId) {
+    return { errors: { idNumber: "That is the ID number already on this case. If it is right, choose \"Yes, same client\" instead." }, values: echo(values) };
+  }
+  const result = await resolveNameMismatch(c.id, corrected).catch(idNumberTaken);
+  if (result === TAKEN) return { errors: { idNumber: new IdNumberTaken().message }, values: echo(values) };
+  if (result.idOwner) return { errors: { idNumber: (await idOwnerPrompt(user.role, result.idOwner, { confirmable: false })).error }, values: echo(values) };
+  await audit(user, corrected !== undefined ? "id-number-corrected" : "id-number-confirmed", "TreatmentCase", c.id);
+  redirect(`/cases/${c.id}`);
 }
 
 // Locks the tablet to this patient's signing screen. A staff member signs in
