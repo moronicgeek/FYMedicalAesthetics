@@ -3,7 +3,8 @@ import { Prisma, type Patient, type Role } from "@prisma/client";
 import { db } from "./db";
 import { blindIndex, decrypt, decryptJson, encryptJson, normaliseEmail, normaliseIdNumber, normalisePhone } from "./crypto";
 import { checkIdOwner, samePerson, type Identity } from "./patient-match";
-import { canSeeService } from "./access";
+import { canSeePaperEntry, canSeeService } from "./access";
+import { sortPaperEntries, type PaperEntry } from "./paper-history";
 import type { PatientInput } from "./validation";
 
 export type PatientRecord = {
@@ -230,4 +231,31 @@ export async function visiblePatients<T extends { id: string }>(role: Role, pati
   if (role !== "PRACTITIONER") return patients;
   const hidden = await hiddenFromPractitioners();
   return patients.filter((p) => !hidden.has(p.id));
+}
+
+export type PaperHistoryItem = {
+  id: string;
+  entry: PaperEntry;
+  enteredBy: string;
+  createdAt: Date;
+  updatedBy?: string;
+  updatedAt: Date;
+};
+
+// A patient's history from their old paper file, as much of it as this role
+// may see (canSeePaperEntry), newest date first.
+export async function listPaperHistory(role: Role, patientId: string): Promise<PaperHistoryItem[]> {
+  const rows = await db.paperHistoryEntry.findMany({
+    where: { patientId },
+    include: { enteredBy: { select: { name: true } }, updatedBy: { select: { name: true } } },
+  });
+  const items = rows.map((r) => ({
+    id: r.id,
+    entry: decryptJson<PaperEntry>(r.data),
+    enteredBy: r.enteredBy?.name ?? "Former staff member",
+    createdAt: r.createdAt,
+    updatedBy: r.updatedById ? (r.updatedBy?.name ?? "Former staff member") : undefined,
+    updatedAt: r.updatedAt,
+  }));
+  return sortPaperEntries(items.filter((i) => canSeePaperEntry(role, i.entry.kind)));
 }

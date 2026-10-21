@@ -4,7 +4,9 @@ import { requireUser } from "@/lib/auth";
 import { audit } from "@/lib/audit";
 import { idPhotoUrl, signedConsents } from "@/lib/cases";
 import { CONSENT_FORMS } from "@/lib/consent-forms";
-import { canSeePatient, getPatient } from "@/lib/patients";
+import { canEnterPaperHistory } from "@/lib/access";
+import { PAPER_KINDS, paperDate } from "@/lib/paper-history";
+import { canSeePatient, getPatient, listPaperHistory } from "@/lib/patients";
 import { listAppointments } from "@/lib/queries";
 import { AppointmentList } from "@/components/AppointmentList";
 import { ageFrom, formatDateTime } from "@/lib/time";
@@ -21,9 +23,10 @@ function Row({ label, value }: { label: string; value?: string }) {
 }
 
 const YES_NO: Record<string, string> = { yes: "Yes", no: "No", na: "Not applicable" };
+const PAPER_SAVED: Record<string, string> = { added: "History from paper saved.", saved: "Changes saved.", removed: "Entry removed." };
 const CONTACT: Record<string, string> = { whatsapp: "WhatsApp", email: "Email", both: "WhatsApp and email" };
 
-export default async function PatientPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ saved?: string; booked?: string; notified?: string }> }) {
+export default async function PatientPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ saved?: string; booked?: string; notified?: string; paper?: string }> }) {
   const user = await requireUser();
   const { id } = await params;
   const flags = await searchParams;
@@ -32,11 +35,13 @@ export default async function PatientPage({ params, searchParams }: { params: Pr
   await audit(user, "view", "Patient", id);
 
   const now = new Date();
-  const [upcoming, past, idPhoto] = await Promise.all([
+  const [upcoming, past, idPhoto, paperHistory] = await Promise.all([
     listAppointments(user, { patientId: id, startsAt: { gte: new Date(now.getTime() - 12 * 3_600_000) } }),
     listAppointments(user, { patientId: id, startsAt: { lt: new Date(now.getTime() - 12 * 3_600_000) } }, "desc"),
     idPhotoUrl(id),
+    listPaperHistory(user.role, id),
   ]);
+  const canEnterPaper = canEnterPaperHistory(user.role);
   // Administrators can download every consent form the patient has signed.
   const consents = user.role === "ADMIN" ? await signedConsents(id) : [];
   const m = patient.medical;
@@ -45,6 +50,7 @@ export default async function PatientPage({ params, searchParams }: { params: Pr
   return (
     <div className="space-y-6">
       {flags.saved && <div className="alert alert-success" role="status">Patient details saved.</div>}
+      {flags.paper && <div className="alert alert-success" role="status">{PAPER_SAVED[flags.paper] ?? PAPER_SAVED.saved}</div>}
       {flags.booked && (
         <div className="alert alert-success" role="status">
           Appointment booked.{" "}
@@ -115,6 +121,37 @@ export default async function PatientPage({ params, searchParams }: { params: Pr
       <section className="card" aria-labelledby="past-heading">
         <h2 id="past-heading" className="section-title mb-2">Past appointments</h2>
         <AppointmentList items={past} showDate showPatient={false} emptyText="No past appointments." />
+      </section>
+
+      <section id="paper-history" className="card space-y-4" aria-labelledby="paper-heading">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="paper-heading" className="section-title">History from paper file ({paperHistory.length})</h2>
+          {canEnterPaper && <Link className="btn btn-secondary" href={`/patients/${id}/paper-history/new`}>Add history from paper</Link>}
+        </div>
+        {paperHistory.length === 0 ? (
+          <p className="muted">{canEnterPaper ? "Nothing copied from an old paper file yet. If this client has one, add what it says here." : "Nothing copied from an old paper file."}</p>
+        ) : (
+          <ul className="divide-y divide-line">
+            {paperHistory.map((h) => (
+              <li key={h.id} className="space-y-2 py-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p><span className="badge badge-PAPER">From paper file</span> <span className="font-bold">{paperDate(h.entry.date)}</span> · {PAPER_KINDS[h.entry.kind]}</p>
+                    {(h.entry.treatment || h.entry.treatedBy) && (
+                      <p>{[h.entry.treatment, h.entry.treatedBy && `seen by ${h.entry.treatedBy}`].filter(Boolean).join(", ")}</p>
+                    )}
+                  </div>
+                  {canEnterPaper && <Link className="underline" href={`/patients/${id}/paper-history/${h.id}/edit`}>Correct</Link>}
+                </div>
+                <p className="whitespace-pre-wrap">{h.entry.notes}</p>
+                <p className="muted">
+                  Copied from paper by {h.enteredBy} on {formatDateTime(h.createdAt)}
+                  {h.updatedBy && `. Last corrected by ${h.updatedBy} on ${formatDateTime(h.updatedAt)}`}.
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {idPhoto && (
