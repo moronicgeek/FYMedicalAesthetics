@@ -1,5 +1,6 @@
 -- Removes every patient record and everything hanging off it (check-ins,
--- treatment cases, signed consents, vitals, appointments), plus the audit log
+-- treatment cases, signed consents, vitals, appointments, history copied from
+-- paper files), plus the audit log
 -- and failed-login and passkey sign-in history. Staff logins, their passkeys
 -- (fingerprint / face sign-in) and Settings (the IV drip list etc.) are kept. Cannot be undone: take an RDS snapshot first.
 --
@@ -36,7 +37,7 @@ SELECT :'confirm' = 'WIPE' AS confirmed \gset
 \endif
 
 BEGIN;
-TRUNCATE "TreatmentCase", "Appointment", "Patient", "AuditLog", "LoginAttempt",
+TRUNCATE "TreatmentCase", "Appointment", "PaperHistoryEntry", "Patient", "AuditLog", "LoginAttempt",
   "PasskeyChallenge";
 \if :everything
   -- Every table, so tables added later are covered too.

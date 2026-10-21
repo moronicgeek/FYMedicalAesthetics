@@ -70,21 +70,23 @@ enum AppointmentStatus {
 }
 
 model User {
-  id                  String          @id @default(cuid())
+  id                  String              @id @default(cuid())
   name                String
-  email               String          @unique
+  email               String              @unique
   phone               String?
   passwordHash        String
   role                Role
-  active              Boolean         @default(true)
-  createdAt           DateTime        @default(now())
+  active              Boolean             @default(true)
+  createdAt           DateTime            @default(now())
   sessions            Session[]
   passkeys            Passkey[]
-  appointments        Appointment[]   @relation("DoctorAppointments")
+  appointments        Appointment[]       @relation("DoctorAppointments")
   auditLogs           AuditLog[]
-  problemReports      ProblemReport[] @relation("ProblemReporter")
-  casesAsPractitioner TreatmentCase[] @relation("CasePractitioner")
-  casesAsDoctor       TreatmentCase[] @relation("CaseDoctor")
+  problemReports      ProblemReport[]     @relation("ProblemReporter")
+  casesAsPractitioner TreatmentCase[]     @relation("CasePractitioner")
+  casesAsDoctor       TreatmentCase[]     @relation("CaseDoctor")
+  paperEntered        PaperHistoryEntry[] @relation("PaperHistoryEnteredBy")
+  paperUpdated        PaperHistoryEntry[] @relation("PaperHistoryUpdatedBy")
 }
 
 model Session {
@@ -137,7 +139,7 @@ model LoginAttempt {
 }
 
 model Patient {
-  id           String          @id @default(cuid())
+  id           String              @id @default(cuid())
   // Encrypted JSON: names, date of birth, contact details, address,
   // emergency contact, medical history and consent details.
   data         String
@@ -145,14 +147,15 @@ model Patient {
   phoneHash    String?
   // One record per ID number: a returning client whose name is typed
   // differently is matched to theirs, never given a second one.
-  idNumberHash String?         @unique
+  idNumberHash String?             @unique
   // Encrypted JPEG data URL of the patient's ID document, if photographed.
   idPhoto      String?
   consentAt    DateTime
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
   appointments Appointment[]
   cases        TreatmentCase[]
+  paperHistory PaperHistoryEntry[]
 
   @@index([emailHash])
   @@index([phoneHash])
@@ -252,6 +255,25 @@ model TreatmentCase {
   @@index([doctorId, status])
   @@index([patientId])
   @@index([createdAt])
+}
+
+// History copied by staff from a client's old paper file, kept apart from
+// visits recorded in this system so nobody mistakes one for the other.
+model PaperHistoryEntry {
+  id          String   @id @default(cuid())
+  patientId   String
+  patient     Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  // Encrypted JSON: kind, date on the paper file, treatment, who treated
+  // them and the notes (see src/lib/paper-history.ts).
+  data        String
+  enteredById String?
+  enteredBy   User?    @relation("PaperHistoryEnteredBy", fields: [enteredById], references: [id], onDelete: SetNull)
+  updatedById String?
+  updatedBy   User?    @relation("PaperHistoryUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([patientId])
 }
 
 model Setting {

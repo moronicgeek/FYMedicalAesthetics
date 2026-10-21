@@ -37,3 +37,14 @@ export function canSeeService(role: Role, service: string) {
 export function servicesFor(role: Role) {
   return SERVICES.filter((s) => canSeeService(role, s));
 }
+
+// Reception copies old paper files onto patient records; admins can too and
+// are the only ones who can remove an entry. Everyone who can see the patient
+// sees all of it.
+export function canEnterPaperHistory(role: Role) {
+  return role === "RECEPTION" || role === "ADMIN";
+}
+
+export function canRemovePaperHistory(role: Role) {
+  return role === "ADMIN";
+}
