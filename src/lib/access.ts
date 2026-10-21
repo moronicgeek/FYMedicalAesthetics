@@ -39,16 +39,12 @@ export function servicesFor(role: Role) {
 }
 
 // Reception copies old paper files onto patient records; admins can too and
-// are the only ones who can remove an entry. Practitioners only see medical
-// history from paper, since a past visit may be an injection or laser.
+// are the only ones who can remove an entry. Everyone who can see the patient
+// sees all of it.
 export function canEnterPaperHistory(role: Role) {
   return role === "RECEPTION" || role === "ADMIN";
 }
 
 export function canRemovePaperHistory(role: Role) {
   return role === "ADMIN";
-}
-
-export function canSeePaperEntry(role: Role, kind: string) {
-  return role !== "PRACTITIONER" || kind === "medical";
 }

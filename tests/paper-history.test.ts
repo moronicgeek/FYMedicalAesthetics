@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { canEnterPaperHistory, canRemovePaperHistory, canSeePaperEntry } from "../src/lib/access";
+import { canEnterPaperHistory, canRemovePaperHistory } from "../src/lib/access";
 import { paperDate, paperEntrySchema, sortPaperEntries, toPaperEntry, type PaperEntry } from "../src/lib/paper-history";
 
 const parse = (v: Record<string, string>) => paperEntrySchema.safeParse(v);
@@ -87,14 +87,5 @@ describe("who works with paper history", () => {
     expect(canRemovePaperHistory("ADMIN")).toBe(true);
     expect(canRemovePaperHistory("RECEPTION")).toBe(false);
     expect(canRemovePaperHistory("DOCTOR")).toBe(false);
-  });
-
-  it("shows practitioners medical history from paper, but not past visits or notes", () => {
-    expect(canSeePaperEntry("PRACTITIONER", "medical")).toBe(true);
-    expect(canSeePaperEntry("PRACTITIONER", "visit")).toBe(false);
-    expect(canSeePaperEntry("PRACTITIONER", "note")).toBe(false);
-    for (const role of ["ADMIN", "DOCTOR", "RECEPTION"] as const) {
-      for (const kind of ["visit", "medical", "note"]) expect(canSeePaperEntry(role, kind)).toBe(true);
-    }
   });
 });

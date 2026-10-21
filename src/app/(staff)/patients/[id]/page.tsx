@@ -39,7 +39,7 @@ export default async function PatientPage({ params, searchParams }: { params: Pr
     listAppointments(user, { patientId: id, startsAt: { gte: new Date(now.getTime() - 12 * 3_600_000) } }),
     listAppointments(user, { patientId: id, startsAt: { lt: new Date(now.getTime() - 12 * 3_600_000) } }, "desc"),
     idPhotoUrl(id),
-    listPaperHistory(user.role, id),
+    listPaperHistory(id),
   ]);
   const canEnterPaper = canEnterPaperHistory(user.role);
   // Administrators can download every consent form the patient has signed.
